@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -2651,6 +2651,7 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		// TODO: reconcile being calculated in the config manager is questionable, and avoiding
 		// extra syncs may no longer be necessary. Reevaluate whether Reconcile and Sync can be
 		// merged (after resolving the next two TODOs).
+		sidecarsStatus := status.GetSidecarsStatus(pod)
 
 		// Reconcile Pod "Ready" condition if necessary. Trigger sync pod for reconciliation.
 		// TODO: this should be unnecessary today - determine what is the cause for this to
@@ -2663,6 +2664,18 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 				UpdateType: kubetypes.SyncPodSync,
 				StartTime:  start,
 			})
+		} else if sidecarsStatus.ContainersWaiting {
+			// if containers aren't running and the sidecars are all ready trigger a sync so that the containers get started
+			if sidecarsStatus.SidecarsPresent && sidecarsStatus.SidecarsReady {
+				klog.InfoS("sidecars: sidecars are ready, dispatching work", "pod", klog.KObj(pod))
+				mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
+				kl.podWorkers.UpdatePod(UpdatePodOptions{
+					Pod:        pod,
+					MirrorPod:  mirrorPod,
+					UpdateType: kubetypes.SyncPodSync,
+					StartTime:  start,
+				})
+			}
 		}
 
 		// After an evicted pod is synced, all dead containers in the pod can be removed.
