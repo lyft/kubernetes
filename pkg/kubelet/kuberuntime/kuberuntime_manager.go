@@ -448,6 +448,10 @@ func containerSucceeded(c *v1.Container, podStatus *kubecontainer.PodStatus) boo
 }
 
 func isSidecar(pod *v1.Pod, containerName string) bool {
+	if pod == nil {
+		glog.V(5).Infof("isSidecar: pod is nil, so returning false")
+		return false
+	}
 	return pod.Annotations[fmt.Sprintf("sidecars.lyft.net/container-lifecycle-%s", containerName)] == "Sidecar"
 }
 
