@@ -560,11 +560,11 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		// need to restart it.
 		if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
 			if !isSidecar(pod, container.Name) && !sidecarsReady {
-				glog.Infof("Container %+v is dead, but we won't start it because its a non-sidecar and sidecars are not ready yet", container)
+				glog.Infof("%s: Container %+v is dead, but we won't start it because its a non-sidecar and sidecars are not ready yet", pod.Name, container)
 				continue
 			}
 			if kubecontainer.ShouldContainerBeRestarted(&container, pod, podStatus) {
-				message := fmt.Sprintf("Container %+v is dead, but RestartPolicy says that we should restart it.", container)
+				message := fmt.Sprintf("%s: Container %+v is dead, but RestartPolicy says that we should restart it.", pod.Name, container)
 				glog.V(3).Infof(message)
 				changes.ContainersToStart = append(changes.ContainersToStart, idx)
 			}
@@ -619,23 +619,9 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 				break
 			}
 		}
-
-		// only sidecars are left so terminate them all
 		if onlySidecars {
-			glog.V(2).Infof("Pod: %s, has only sidecars running, terminating them", format.Pod(pod))
-			for idx, container := range pod.Spec.Containers {
-				containerStatus := podStatus.FindContainerStatusByName(container.Name)
-				// we don't need to terminate non sidecars or exited sidecars
-				if isSidecar(pod, container.Name) && containerStatus.State == kubecontainer.ContainerStateRunning {
-					message := " All containers have permanently exited, sidecar container will be killed"
-					changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
-						name:      containerStatus.Name,
-						container: &pod.Spec.Containers[idx],
-						message:   message,
-					}
-					glog.V(2).Infof("Container %q (%q) of pod, is sidecar %s: %s", container.Name, containerStatus.ID, format.Pod(pod), message)
-				}
-			}
+			changes.ContainersToStart = []int{}
+			changes.KillPod = true
 		}
 	}
 
