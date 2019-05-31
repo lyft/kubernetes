@@ -620,6 +620,7 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 			}
 		}
 		if onlySidecars {
+			glog.V(2).Infof("Pod: %s, has only sidecars running, killing Pod", format.Pod(pod))
 			changes.ContainersToStart = []int{}
 			changes.KillPod = true
 		}
