@@ -1122,7 +1122,11 @@ func TestComputePodActionsWithSidecar(t *testing.T) {
 			mutateStatusFn: func(status *kubecontainer.PodStatus) {
 				for i := range status.ContainerStatuses {
 					status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
-					status.ContainerStatuses[i].ExitCode = 0
+					if i == 1 {
+						status.ContainerStatuses[i].ExitCode = 1
+					} else {
+						status.ContainerStatuses[i].ExitCode = 0
+					}
 				}
 			},
 			actions: podActions{
@@ -1138,11 +1142,10 @@ func TestComputePodActionsWithSidecar(t *testing.T) {
 			},
 			mutateStatusFn: func(status *kubecontainer.PodStatus) {
 				for i := range status.ContainerStatuses {
+					status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
 					if i == 1 {
-						status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
 						status.ContainerStatuses[i].ExitCode = 1
 					} else {
-						status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
 						status.ContainerStatuses[i].ExitCode = 0
 					}
 				}

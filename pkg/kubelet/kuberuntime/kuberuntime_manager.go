@@ -574,7 +574,7 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		// If container does not exist, or is not running, check whether we
 		// need to restart it.
 		if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
-			if isSidecar(pod, container.Name) && sidecarsOnly {
+			if sidecarsOnly && isSidecar(pod, container.Name) {
 				glog.Infof("Pod: %s: %s: is sidecar, sidecars only, so not restarting", format.Pod(pod), container.Name)
 				continue
 			}
@@ -597,7 +597,7 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 			// in this case, the container is a sidecar, but no
 			// non-sidecars are ever going to run again. we don't need
 			// the sidecars, so we kill it as well
-			reason = "Non-sidecars have completed."
+			reason = "Non-sidecars have completed. Container will be killed."
 			// we are not planning to restart this container.
 			restart = false
 			// keepCount set to avoid killing pod right away - we should only
@@ -631,6 +631,7 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 	}
 
 	if keepCount == 0 && len(changes.ContainersToStart) == 0 {
+		glog.Infof("Pod: %s: KillPod=true", format.Pod(pod))
 		changes.KillPod = true
 	}
 
