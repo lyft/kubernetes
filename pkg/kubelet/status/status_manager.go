@@ -700,6 +700,8 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 					if !status.Ready {
 						glog.Infof("Pod %s: %s: sidecar not ready", format.Pod(pod), container.Name)
 						sidecarsStatus.SidecarsReady = false
+					} else {
+						glog.Infof("Pod %s: %s: sidecar is ready", format.Pod(pod), container.Name)
 					}
 				} else if status.State.Waiting != nil {
 					// check if non-sidecars have started

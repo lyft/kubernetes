@@ -1098,7 +1098,7 @@ func TestComputePodActionsWithSidecar(t *testing.T) {
 	}{
 		"Kill sidecars if all non-sidecars are terminated": {
 			mutatePodFn: func(pod *v1.Pod) {
-				pod.Spec.RestartPolicy = v1.RestartPolicyNever
+				pod.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 			},
 			mutateStatusFn: func(status *kubecontainer.PodStatus) {
 				for i := range status.ContainerStatuses {
@@ -1110,9 +1110,47 @@ func TestComputePodActionsWithSidecar(t *testing.T) {
 				}
 			},
 			actions: podActions{
-				KillPod:           true,
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{1}),
+				ContainersToStart: []int{},
+			},
+		},
+		"Kill pod if all sidecars and non-sidecars are terminated": {
+			mutatePodFn: func(pod *v1.Pod) {
+				pod.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+			},
+			mutateStatusFn: func(status *kubecontainer.PodStatus) {
+				for i := range status.ContainerStatuses {
+					status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
+					status.ContainerStatuses[i].ExitCode = 0
+				}
+			},
+			actions: podActions{
+				KillPod:           true,
+				SandboxID:         baseStatus.SandboxStatuses[0].Id,
+				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
+				ContainersToStart: []int{},
+			},
+		},
+		"Don't restart sidecars if all non-sidecars are terminated": {
+			mutatePodFn: func(pod *v1.Pod) {
+				pod.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+			},
+			mutateStatusFn: func(status *kubecontainer.PodStatus) {
+				for i := range status.ContainerStatuses {
+					if i == 1 {
+						status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
+						status.ContainerStatuses[i].ExitCode = 1
+					} else {
+						status.ContainerStatuses[i].State = kubecontainer.ContainerStateExited
+						status.ContainerStatuses[i].ExitCode = 0
+					}
+				}
+			},
+			actions: podActions{
+				KillPod:           true,
+				SandboxID:         baseStatus.SandboxStatuses[0].Id,
+				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
 			},
 		},
