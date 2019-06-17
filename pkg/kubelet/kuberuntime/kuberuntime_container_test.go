@@ -99,7 +99,7 @@ func TestKillContainer(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := m.killContainer(test.pod, test.containerID, test.containerName, test.reason, test.GracePeriodOverride*time.Second)
+		err := m.killContainer(test.pod, test.containerID, test.containerName, test.reason, time.Duration(test.gracePeriodOverride)*time.Second)
 		if test.succeed != (err == nil) {
 			t.Errorf("%s: expected %v, got %v (%v)", test.caseName, test.succeed, (err == nil), err)
 		}
