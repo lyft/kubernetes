@@ -17,6 +17,9 @@ limitations under the License.
 package core
 
 import (
+	"encoding/json"
+	"errors"
+	"github.com/golang/protobuf/jsonpb"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -3775,6 +3778,27 @@ const (
 
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[ResourceName]resource.Quantity
+
+func (r *ResourceList) UnmarshalJSONPB(u *jsonpb.Unmarshaler, value []byte) error {
+	var m map[string]interface{}
+	err := json.Unmarshal(value, &m)
+	if err != nil {
+		return err
+	}
+
+	resourceList := make(ResourceList)
+	for resourceName, quantity := range m {
+		quantityMap := quantity.(map[string]interface{})
+		quantityIface, ok := quantityMap["string"]
+		if !ok {
+			return errors.New("missing string key in quantity")
+		}
+
+		resourceList[ResourceName(resourceName)] = resource.MustParse(quantityIface.(string))
+	}
+	*r = resourceList
+	return nil
+}
 
 // +genclient
 // +genclient:nonNamespaced

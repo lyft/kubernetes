@@ -18,6 +18,8 @@ package resource
 
 import (
 	"encoding/json"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/magiconair/properties/assert"
 	"math/rand"
 	"strings"
 	"testing"
@@ -880,6 +882,16 @@ func TestJSONWhitespace(t *testing.T) {
 			t.Errorf("unexpected string: %q", q.String())
 		}
 	}
+}
+
+func TestUnmarshalJSONPB(t *testing.T) {
+	quantity := Quantity{}
+	err := quantity.UnmarshalJSONPB(&jsonpb.Unmarshaler{}, []byte(`{"string":"10Gi"}`))
+	if err != nil {
+		t.Error("UnmarshalJSONPB failed")
+	}
+	expected := MustParse("10Gi")
+	assert.Equal(t, quantity.String(), expected.String())
 }
 
 func TestMilliNewSet(t *testing.T) {
