@@ -3794,7 +3794,17 @@ func (r *ResourceList) UnmarshalJSONPB(u *jsonpb.Unmarshaler, value []byte) erro
 			return errors.New("missing string key in quantity")
 		}
 
-		resourceList[ResourceName(resourceName)] = resource.MustParse(quantityIface.(string))
+                 asString, casted := quantityIface.(string)
+                 if !casted {
+                      return fmt.Errorf("quantity string key doesn't have a string as a value. It has {} instead", reflect.TypeOf(quantityIface))
+                 }
+                 
+                 
+		resourceList[ResourceName(resourceName)], err = resource.Parse(asString)
+		if err != nil {
+		   // TODO: return a wrapped error if that's used somewhere else in this code base
+		    return err 
+		}
 	}
 	*r = resourceList
 	return nil
