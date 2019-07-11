@@ -54,7 +54,6 @@ import (
 	cloudprovider "k8s.io/cloud-provider"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/klog"
-	"k8s.io/klog/glog"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletconfiginternal "k8s.io/kubernetes/pkg/kubelet/apis/config"
@@ -2138,7 +2137,7 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		} else if sidecarsStatus.ContainersWaiting {
 			// if containers aren't running and the sidecars are all ready trigger a sync so that the containers get started
 			if sidecarsStatus.SidecarsPresent && sidecarsStatus.SidecarsReady {
-				glog.Infof("Pod: %s: sidecars: sidecars are ready, dispatching work", format.Pod(pod))
+				klog.Infof("Pod: %s: sidecars: sidecars are ready, dispatching work", format.Pod(pod))
 				mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
 				kl.dispatchWork(pod, kubetypes.SyncPodSync, mirrorPod, start)
 			}
