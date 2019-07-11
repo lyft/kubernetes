@@ -39,9 +39,8 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/armon/circbuf"
-	"k8s.io/klog/v2"
 	"k8s.io/klog"
-	"k8s.io/klog/glog"
+	"k8s.io/klog/v2"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -286,11 +285,8 @@ func (m *kubeGenericRuntimeManager) startContainer(podSandboxID string, podSandb
 			klog.ErrorS(handlerErr, "Failed to execute PostStartHook", "pod", klog.KObj(pod),
 				"podUID", pod.UID, "containerName", container.Name, "containerID", kubeContainerID.String())
 			m.recordContainerEvent(pod, container, kubeContainerID.ID, v1.EventTypeWarning, events.FailedPostStartHook, msg)
-			if err := m.killContainer(pod, kubeContainerID, container.Name, "FailedPostStartHook", reasonFailedPostStartHook, nil); err != nil {
-				klog.ErrorS(err, "Failed to kill container", "pod", klog.KObj(pod),
-					"podUID", pod.UID, "containerName", container.Name, "containerID", kubeContainerID.String())
 			if err := m.killContainer(pod, kubeContainerID, container.Name, "FailedPostStartHook", reasonFailedPostStartHook, 0); err != nil {
-				glog.Errorf("Failed to kill container %q(id=%q) in pod %q: %v, %v",
+				klog.Errorf("Failed to kill container %q(id=%q) in pod %q: %v, %v",
 					container.Name, kubeContainerID.String(), format.Pod(pod), ErrPostStartHook, err)
 			}
 			return msg, ErrPostStartHook
@@ -728,7 +724,7 @@ func (m *kubeGenericRuntimeManager) killContainer(pod *v1.Pod, containerID kubec
 	}
 	if gracePeriodDuration > 0 {
 		gracePeriod = int64(gracePeriodDuration.Seconds())
-		glog.V(3).Infof("Killing container %q, but using %d second grace period override", containerID, gracePeriod)
+		klog.V(3).Infof("Killing container %q, but using %d second grace period override", containerID, gracePeriod)
 	}
 
 	klog.V(2).InfoS("Killing container with a grace period", "pod", klog.KObj(pod), "podUID", pod.UID,
@@ -764,7 +760,7 @@ func (m *kubeGenericRuntimeManager) killContainersWithSyncResult(pod *v1.Pod, ru
 	containerResults := make(chan *kubecontainer.SyncResult, len(runningPod.Containers))
 	// non-sidecars first
 	start := time.Now()
-	glog.Infof("Pod: %s, killContainersWithSyncResult: killing %d non-sidecars, %s termination period", runningPod.Name, len(nonSidecars), gracePeriodDuration)
+	klog.Infof("Pod: %s, killContainersWithSyncResult: killing %d non-sidecars, %s termination period", runningPod.Name, len(nonSidecars), gracePeriodDuration)
 	nonSidecarsWg := sync.WaitGroup{}
 	nonSidecarsWg.Add(len(nonSidecars))
 	for _, container := range nonSidecars {
@@ -786,7 +782,7 @@ func (m *kubeGenericRuntimeManager) killContainersWithSyncResult(pod *v1.Pod, ru
 	}
 
 	// then sidecars
-	glog.Infof("Pod: %s, killContainersWithSyncResult: killing %d sidecars, %s left", runningPod.Name, len(sidecars), gracePeriodDuration)
+	klog.Infof("Pod: %s, killContainersWithSyncResult: killing %d sidecars, %s left", runningPod.Name, len(sidecars), gracePeriodDuration)
 	wg := sync.WaitGroup{}
 	wg.Add(len(sidecars))
 	for _, container := range sidecars {
