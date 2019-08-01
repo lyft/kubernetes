@@ -18,13 +18,13 @@ package core
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/golang/protobuf/jsonpb"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"strings"
 )
 
 const (
@@ -258,8 +258,6 @@ const (
 	MountOptionAnnotation = "volume.beta.kubernetes.io/mount-options"
 )
 
-// +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type PersistentVolume struct {
@@ -366,7 +364,6 @@ type PersistentVolumeList struct {
 	Items []PersistentVolume
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PersistentVolumeClaim is a user's request for and claim to a persistent volume
@@ -419,11 +416,14 @@ type PersistentVolumeClaimSpec struct {
 	// This is a beta feature.
 	// +optional
 	VolumeMode *PersistentVolumeMode
-	// This field requires the VolumeSnapshotDataSource alpha feature gate to be
-	// enabled and currently VolumeSnapshot is the only supported data source.
-	// If the provisioner can support VolumeSnapshot data source, it will create
-	// a new volume and data will be restored to the volume at the same time.
-	// If the provisioner does not support VolumeSnapshot data source, volume will
+	// This field can be used to specify either:
+	// * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+	// * An existing PVC (PersistentVolumeClaim)
+	// In order to use either of these DataSource types, the appropriate feature gate
+	// must be enabled (VolumeSnapshotDataSource, VolumePVCDataSource)
+	// If the provisioner can support the specified data source, it will create
+	// a new volume based on the contents of the specified PVC or Snapshot.
+	// If the provisioner does not support the specified data source, the volume will
 	// not be created and the failure will be reported as an event.
 	// In the future, we plan to support more data source types and the behavior
 	// of the provisioner may change.
@@ -1449,7 +1449,7 @@ type ConfigMapVolumeSource struct {
 	// mode, like fsGroup, and the result can be other mode bits set.
 	// +optional
 	DefaultMode *int32
-	// Specify whether the ConfigMap or it's keys must be defined
+	// Specify whether the ConfigMap or its keys must be defined
 	// +optional
 	Optional *bool
 }
@@ -1472,7 +1472,7 @@ type ConfigMapProjection struct {
 	// relative and may not contain the '..' path or start with '..'.
 	// +optional
 	Items []KeyToPath
-	// Specify whether the ConfigMap or it's keys must be defined
+	// Specify whether the ConfigMap or its keys must be defined
 	// +optional
 	Optional *bool
 }
@@ -1607,6 +1607,15 @@ type CSIPersistentVolumeSource struct {
 	// secret object contains more than one secret, all secrets are passed.
 	// +optional
 	NodePublishSecretRef *SecretReference
+
+	// ControllerExpandSecretRef is a reference to the secret object containing
+	// sensitive information to pass to the CSI driver to complete the CSI
+	// ControllerExpandVolume call.
+	// This is an alpha field and requires enabling ExpandCSIVolumes feature gate.
+	// This field is optional, and may be empty if no secret is required. If the
+	// secret object contains more than one secret, all secrets are passed.
+	// +optional
+	ControllerExpandSecretRef *SecretReference
 }
 
 // Represents a source location of a volume to mount, managed by an external CSI driver
@@ -1686,7 +1695,7 @@ type VolumeMount struct {
 	// Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment.
 	// Defaults to "" (volume's root).
 	// SubPathExpr and SubPath are mutually exclusive.
-	// This field is alpha in 1.14.
+	// This field is beta in 1.15.
 	// +optional
 	SubPathExpr string
 }
@@ -1790,7 +1799,7 @@ type ConfigMapKeySelector struct {
 	LocalObjectReference
 	// The key to select.
 	Key string
-	// Specify whether the ConfigMap or it's key must be defined
+	// Specify whether the ConfigMap or its key must be defined
 	// +optional
 	Optional *bool
 }
@@ -1801,7 +1810,7 @@ type SecretKeySelector struct {
 	LocalObjectReference
 	// The key of the secret to select from.  Must be a valid secret key.
 	Key string
-	// Specify whether the Secret or it's key must be defined
+	// Specify whether the Secret or its key must be defined
 	// +optional
 	Optional *bool
 }
@@ -1936,6 +1945,16 @@ const (
 	PullNever PullPolicy = "Never"
 	// PullIfNotPresent means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
 	PullIfNotPresent PullPolicy = "IfNotPresent"
+)
+
+// PreemptionPolicy describes a policy for if/when to preempt a pod.
+type PreemptionPolicy string
+
+const (
+	// PreemptLowerPriority means that pod can preempt other pods with lower priority.
+	PreemptLowerPriority PreemptionPolicy = "PreemptLowerPriority"
+	// PreemptNever means that pod never preempts other pods with lower priority.
+	PreemptNever PreemptionPolicy = "Never"
 )
 
 // TerminationMessagePolicy describes how termination messages are retrieved from a container.
@@ -2659,6 +2678,12 @@ type PodSpec struct {
 	// The higher the value, the higher the priority.
 	// +optional
 	Priority *int32
+	// PreemptionPolicy is the Policy for preempting pods with lower priority.
+	// One of Never, PreemptLowerPriority.
+	// Defaults to PreemptLowerPriority if unset.
+	// This field is alpha-level and is only honored by servers that enable the NonPreemptingPriority feature.
+	// +optional
+	PreemptionPolicy *PreemptionPolicy
 	// Specifies the DNS parameters of a pod.
 	// Parameters specified here will be merged to the generated DNS
 	// configuration based on DNSPolicy.
@@ -2675,9 +2700,19 @@ type PodSpec struct {
 	// If unset or empty, the "legacy" RuntimeClass will be used, which is an implicit class with an
 	// empty definition that uses the default runtime handler.
 	// More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
-	// This is an alpha feature and may change in the future.
+	// This is a beta feature as of Kubernetes v1.14.
 	// +optional
 	RuntimeClassName *string
+	// Overhead represents the resource overhead associated with running a pod for a given RuntimeClass.
+	// This field will be autopopulated at admission time by the RuntimeClass admission controller. If
+	// the RuntimeClass admission controller is enabled, overhead must not be set in Pod create requests.
+	// The RuntimeClass admission controller will reject Pod create requests which have the overhead already
+	// set. If RuntimeClass is configured and selected in the PodSpec, Overhead will be set to the value
+	// defined in the corresponding RuntimeClass, otherwise it will remain unset and treated as zero.
+	// More info: https://git.k8s.io/enhancements/keps/sig-node/20190226-pod-overhead.md
+	// This field is alpha-level as of Kubernetes v1.16, and is only honored by servers that enable the PodOverhead feature.
+	// +optional
+	Overhead ResourceList
 	// EnableServiceLinks indicates whether information about services should be injected into pod's
 	// environment variables, matching the syntax of Docker links.
 	// If not specified, the default is true.
@@ -2736,6 +2771,9 @@ type PodSecurityContext struct {
 	// takes precedence for that container.
 	// +optional
 	SELinuxOptions *SELinuxOptions
+	// Windows security options.
+	// +optional
+	WindowsOptions *WindowsSecurityContextOptions
 	// The UID to run the entrypoint of the container process.
 	// Defaults to user specified in image metadata if unspecified.
 	// May also be set in SecurityContext.  If set in both SecurityContext and
@@ -2882,7 +2920,6 @@ type PodStatusResult struct {
 	Status PodStatus
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Pod is a collection of containers, used as either input (create, update) or as output (list, get).
@@ -2912,7 +2949,6 @@ type PodTemplateSpec struct {
 	Spec PodSpec
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PodTemplate describes a template for creating copies of a predefined pod.
@@ -3020,9 +3056,6 @@ type ReplicationControllerCondition struct {
 	Message string
 }
 
-// +genclient
-// +genclient:method=GetScale,verb=get,subresource=scale,result=k8s.io/kubernetes/pkg/apis/autoscaling.Scale
-// +genclient:method=UpdateScale,verb=update,subresource=scale,input=k8s.io/kubernetes/pkg/apis/autoscaling.Scale,result=k8s.io/kubernetes/pkg/apis/autoscaling.Scale
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ReplicationController represents the configuration of a replication controller.
@@ -3296,7 +3329,6 @@ type ServicePort struct {
 	NodePort int32
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port
@@ -3316,7 +3348,6 @@ type Service struct {
 	Status ServiceStatus
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ServiceAccount binds together:
@@ -3354,7 +3385,6 @@ type ServiceAccountList struct {
 	Items []ServiceAccount
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Endpoints is a collection of endpoints that implement the actual service.  Example:
@@ -3780,7 +3810,7 @@ const (
 type ResourceList map[ResourceName]resource.Quantity
 
 func (r *ResourceList) UnmarshalJSONPB(u *jsonpb.Unmarshaler, value []byte) error {
-	var m map[string]interface{}
+	var m map[string]string
 	err := json.Unmarshal(value, &m)
 	if err != nil {
 		return err
@@ -3788,23 +3818,12 @@ func (r *ResourceList) UnmarshalJSONPB(u *jsonpb.Unmarshaler, value []byte) erro
 
 	resourceList := make(ResourceList)
 	for resourceName, quantity := range m {
-		quantityMap := quantity.(map[string]interface{})
-		quantityIface, ok := quantityMap["string"]
-		if !ok {
-			return errors.New("missing string key in quantity")
-		}
-
-                 asString, casted := quantityIface.(string)
-                 if !casted {
-                      return fmt.Errorf("quantity string key doesn't have a string as a value. It has {} instead", reflect.TypeOf(quantityIface))
-                 }
-                 
-                 
-		resourceList[ResourceName(resourceName)], err = resource.Parse(asString)
+		quantityPB := resource.Quantity{}
+		err := u.Unmarshal(strings.NewReader(quantity), &quantityPB)
 		if err != nil {
-		   // TODO: return a wrapped error if that's used somewhere else in this code base
-		    return err 
+			return err
 		}
+		resourceList[ResourceName(resourceName)] = quantityPB
 	}
 	*r = resourceList
 	return nil
@@ -3873,8 +3892,6 @@ const (
 	NamespaceTerminating NamespacePhase = "Terminating"
 )
 
-// +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // A namespace provides a scope for Names.
@@ -4129,7 +4146,6 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Event is a report of an event somewhere in the cluster.
@@ -4206,6 +4222,7 @@ type EventSeries struct {
 	// Time of the last occurrence observed
 	LastObservedTime metav1.MicroTime
 	// State of this Series: Ongoing or Finished
+	// Deprecated. Planned removal for 1.18
 	State EventSeriesState
 }
 
@@ -4273,7 +4290,6 @@ type LimitRangeSpec struct {
 	Limits []LimitRangeItem
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // LimitRange sets resource usage limits for each kind of resource in a Namespace
@@ -4420,7 +4436,6 @@ type ResourceQuotaStatus struct {
 	Used ResourceList
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ResourceQuota sets aggregate quota restrictions enforced per namespace
@@ -4450,7 +4465,6 @@ type ResourceQuotaList struct {
 	Items []ResourceQuota
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Secret holds secret data of a certain type.  The total bytes of the values in
@@ -4570,7 +4584,6 @@ type SecretList struct {
 	Items []Secret
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ConfigMap holds configuration data for components or applications to consume.
@@ -4668,8 +4681,6 @@ type ComponentCondition struct {
 	Error string
 }
 
-// +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ComponentStatus (and ComponentStatusList) holds the cluster validation info.
@@ -4711,6 +4722,9 @@ type SecurityContext struct {
 	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	// +optional
 	SELinuxOptions *SELinuxOptions
+	// Windows security options.
+	// +optional
+	WindowsOptions *WindowsSecurityContextOptions
 	// The UID to run the entrypoint of the container process.
 	// Defaults to user specified in image metadata if unspecified.
 	// May also be set in PodSecurityContext.  If set in both SecurityContext and
@@ -4775,6 +4789,21 @@ type SELinuxOptions struct {
 	// SELinux level label.
 	// +optional
 	Level string
+}
+
+// WindowsSecurityContextOptions contain Windows-specific options and credentials.
+type WindowsSecurityContextOptions struct {
+	// GMSACredentialSpecName is the name of the GMSA credential spec to use.
+	// This field is alpha-level and is only honored by servers that enable the WindowsGMSA feature flag.
+	// +optional
+	GMSACredentialSpecName *string
+
+	// GMSACredentialSpec is where the GMSA admission webhook
+	// (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the
+	// GMSA credential spec named by the GMSACredentialSpecName field.
+	// This field is alpha-level and is only honored by servers that enable the WindowsGMSA feature flag.
+	// +optional
+	GMSACredentialSpec *string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

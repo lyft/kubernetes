@@ -29,6 +29,7 @@ import (
 
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/annotate"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/apiresources"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/apply"
@@ -70,7 +71,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/version"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/wait"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/kustomize"
@@ -439,7 +439,7 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	addProfilingFlags(flags)
 
-	kubeConfigFlags := genericclioptions.NewConfigFlags(true)
+	kubeConfigFlags := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
 	kubeConfigFlags.AddFlags(flags)
 	matchVersionKubeConfigFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
 	matchVersionKubeConfigFlags.AddFlags(cmds.PersistentFlags())
@@ -571,19 +571,4 @@ func NewKubectlCommand(in io.Reader, out, err io.Writer) *cobra.Command {
 
 func runHelp(cmd *cobra.Command, args []string) {
 	cmd.Help()
-}
-
-// deprecatedAlias is intended to be used to create a "wrapper" command around
-// an existing command. The wrapper works the same but prints a deprecation
-// message before running. This command is identical functionality.
-func deprecatedAlias(deprecatedVersion string, cmd *cobra.Command) *cobra.Command {
-	// Have to be careful here because Cobra automatically extracts the name
-	// of the command from the .Use field.
-	originalName := cmd.Name()
-
-	cmd.Use = deprecatedVersion
-	cmd.Deprecated = fmt.Sprintf("use %q instead", originalName)
-	cmd.Short = fmt.Sprintf("%s. This command is deprecated, use %q instead", cmd.Short, originalName)
-	cmd.Hidden = true
-	return cmd
 }

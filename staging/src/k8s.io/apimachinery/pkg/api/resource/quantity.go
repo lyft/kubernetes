@@ -586,6 +586,12 @@ func (q *Quantity) Neg() {
 	q.d.Dec.Neg(q.d.Dec)
 }
 
+// Equal checks equality of two Quantities. This is useful for testing with
+// cmp.Equal.
+func (q Quantity) Equal(v Quantity) bool {
+	return q.Cmp(v) == 0
+}
+
 // int64QuantityExpectedBytes is the expected width in bytes of the canonical string representation
 // of most Quantity values.
 const int64QuantityExpectedBytes = 18
@@ -651,6 +657,13 @@ func (q *Quantity) UnmarshalJSON(value []byte) error {
 	// This copy is safe because parsed will not be referred to again.
 	*q = parsed
 	return nil
+}
+
+// MarshalJSONPB implements the jsonpb.Marshaler interface.
+func (q *Quantity) MarshalJSONPB(m *jsonpb.Marshaler) ([]byte, error) {
+	var marshaled = make(map[string]string, 1)
+	marshaled["string"] = q.String()
+	return json.Marshal(marshaled)
 }
 
 // UnmarshalJSONPB implements the jsonpb.Unmarshaler interface.

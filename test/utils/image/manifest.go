@@ -26,12 +26,14 @@ import (
 
 // RegistryList holds public and private image registries
 type RegistryList struct {
-	DockerLibraryRegistry string `yaml:"dockerLibraryRegistry"`
-	E2eRegistry           string `yaml:"e2eRegistry"`
-	EtcdRegistry          string `yaml:"etcdRegistry"`
-	GcRegistry            string `yaml:"gcRegistry"`
-	PrivateRegistry       string `yaml:"privateRegistry"`
-	SampleRegistry        string `yaml:"sampleRegistry"`
+	GcAuthenticatedRegistry string `yaml:"gcAuthenticatedRegistry"`
+	DockerLibraryRegistry   string `yaml:"dockerLibraryRegistry"`
+	E2eRegistry             string `yaml:"e2eRegistry"`
+	InvalidRegistry         string `yaml:"invalidRegistry"`
+	GcRegistry              string `yaml:"gcRegistry"`
+	GoogleContainerRegistry string `yaml:"googleContainerRegistry"`
+	PrivateRegistry         string `yaml:"privateRegistry"`
+	SampleRegistry          string `yaml:"sampleRegistry"`
 }
 
 // Config holds an images registry, name, and version
@@ -58,12 +60,14 @@ func (i *Config) SetVersion(version string) {
 
 func initReg() RegistryList {
 	registry := RegistryList{
-		DockerLibraryRegistry: "docker.io/library",
-		E2eRegistry:           "gcr.io/kubernetes-e2e-test-images",
-		EtcdRegistry:          "quay.io/coreos",
-		GcRegistry:            "k8s.gcr.io",
-		PrivateRegistry:       "gcr.io/k8s-authenticated-test",
-		SampleRegistry:        "gcr.io/google-samples",
+		GcAuthenticatedRegistry: "gcr.io/authenticated-image-pulling",
+		DockerLibraryRegistry:   "docker.io/library",
+		E2eRegistry:             "gcr.io/kubernetes-e2e-test-images",
+		InvalidRegistry:         "invalid.com/invalid",
+		GcRegistry:              "k8s.gcr.io",
+		GoogleContainerRegistry: "gcr.io/google-containers",
+		PrivateRegistry:         "gcr.io/k8s-authenticated-test",
+		SampleRegistry:          "gcr.io/google-samples",
 	}
 	repoList := os.Getenv("KUBE_TEST_REPO_LIST")
 	if repoList == "" {
@@ -83,11 +87,13 @@ func initReg() RegistryList {
 }
 
 var (
-	registry              = initReg()
-	dockerLibraryRegistry = registry.DockerLibraryRegistry
-	e2eRegistry           = registry.E2eRegistry
-	etcdRegistry          = registry.EtcdRegistry
-	gcRegistry            = registry.GcRegistry
+	registry                = initReg()
+	dockerLibraryRegistry   = registry.DockerLibraryRegistry
+	e2eRegistry             = registry.E2eRegistry
+	gcAuthenticatedRegistry = registry.GcAuthenticatedRegistry
+	gcRegistry              = registry.GcRegistry
+	googleContainerRegistry = registry.GoogleContainerRegistry
+	invalidRegistry         = registry.InvalidRegistry
 	// PrivateRegistry is an image repository that requires authentication
 	PrivateRegistry = registry.PrivateRegistry
 	sampleRegistry  = registry.SampleRegistry
@@ -99,14 +105,20 @@ var (
 const (
 	// CRDConversionWebhook image
 	CRDConversionWebhook = iota
-	// AdmissionWebhook image
-	AdmissionWebhook
+	// Agnhost image
+	Agnhost
+	// Alpine image
+	Alpine
 	// APIServer image
 	APIServer
 	// AppArmorLoader image
 	AppArmorLoader
 	// AuditProxy image
 	AuditProxy
+	// AuthenticatedAlpine image
+	AuthenticatedAlpine
+	// AuthenticatedWindowsNanoServer image
+	AuthenticatedWindowsNanoServer
 	// BusyBox image
 	BusyBox
 	// CheckMetadataConcealment image
@@ -117,20 +129,24 @@ const (
 	CudaVectorAdd2
 	// Dnsutils image
 	Dnsutils
+	// DebianBase image
+	DebianBase
 	// EchoServer image
 	EchoServer
 	// EntrypointTester image
 	EntrypointTester
 	// Etcd image
 	Etcd
-	// Fakegitserver image
-	Fakegitserver
 	// GBFrontend image
 	GBFrontend
 	// GBRedisSlave image
 	GBRedisSlave
-	// Hostexec image
-	Hostexec
+	// InClusterClient image
+	InClusterClient
+	// Invalid image
+	Invalid
+	// InvalidRegistryImage image
+	InvalidRegistryImage
 	// IpcUtils image
 	IpcUtils
 	// Iperf image
@@ -139,47 +155,43 @@ const (
 	JessieDnsutils
 	// Kitten image
 	Kitten
-	// Liveness image
-	Liveness
-	// LogsGenerator image
-	LogsGenerator
 	// Mounttest image
 	Mounttest
 	// MounttestUser image
 	MounttestUser
 	// Nautilus image
 	Nautilus
-	// Net image
-	Net
-	// Netexec image
-	Netexec
-	// Nettest image
-	Nettest
 	// Nginx image
 	Nginx
 	// NginxNew image
 	NginxNew
 	// Nonewprivs image
 	Nonewprivs
-	// NoSnatTest image
-	NoSnatTest
-	// NoSnatTestProxy image
-	NoSnatTestProxy
+	// NonRoot runs with a default user of 1234
+	NonRoot
 	// Pause - when these values are updated, also update cmd/kubelet/app/options/container_runtime.go
 	// Pause image
 	Pause
+	// Perl image
+	Perl
 	// Porter image
 	Porter
-	// PortForwardTester image
-	PortForwardTester
+	// PrometheusDummyExporter image
+	PrometheusDummyExporter
+	// PrometheusToSd image
+	PrometheusToSd
 	// Redis image
 	Redis
 	// ResourceConsumer image
 	ResourceConsumer
 	// ResourceController image
 	ResourceController
+	// SdDummyExporter image
+	SdDummyExporter
 	// ServeHostname image
 	ServeHostname
+	// StartupScript image
+	StartupScript
 	// TestWebserver image
 	TestWebserver
 	// VolumeNFSServer image
@@ -190,12 +202,16 @@ const (
 	VolumeGlusterServer
 	// VolumeRBDServer image
 	VolumeRBDServer
+	// WindowsNanoServer image
+	WindowsNanoServer
 )
 
 func initImageConfigs() map[int]Config {
 	configs := map[int]Config{}
 	configs[CRDConversionWebhook] = Config{e2eRegistry, "crd-conversion-webhook", "1.13rev2"}
-	configs[AdmissionWebhook] = Config{e2eRegistry, "webhook", "1.14v1"}
+	configs[Agnhost] = Config{e2eRegistry, "agnhost", "2.1"}
+	configs[Alpine] = Config{dockerLibraryRegistry, "alpine", "3.7"}
+	configs[AuthenticatedAlpine] = Config{gcAuthenticatedRegistry, "alpine", "3.7"}
 	configs[APIServer] = Config{e2eRegistry, "sample-apiserver", "1.10"}
 	configs[AppArmorLoader] = Config{e2eRegistry, "apparmor-loader", "1.0"}
 	configs[AuditProxy] = Config{e2eRegistry, "audit-proxy", "1.0"}
@@ -204,43 +220,44 @@ func initImageConfigs() map[int]Config {
 	configs[CudaVectorAdd] = Config{e2eRegistry, "cuda-vector-add", "1.0"}
 	configs[CudaVectorAdd2] = Config{e2eRegistry, "cuda-vector-add", "2.0"}
 	configs[Dnsutils] = Config{e2eRegistry, "dnsutils", "1.1"}
+	configs[DebianBase] = Config{googleContainerRegistry, "debian-base", "0.4.1"}
 	configs[EchoServer] = Config{e2eRegistry, "echoserver", "2.2"}
 	configs[EntrypointTester] = Config{e2eRegistry, "entrypoint-tester", "1.0"}
-	configs[Etcd] = Config{etcdRegistry, "etcd", "v3.3.10"}
-	configs[Fakegitserver] = Config{e2eRegistry, "fakegitserver", "1.0"}
+	configs[Etcd] = Config{gcRegistry, "etcd", "3.3.10"}
 	configs[GBFrontend] = Config{sampleRegistry, "gb-frontend", "v6"}
 	configs[GBRedisSlave] = Config{sampleRegistry, "gb-redisslave", "v3"}
-	configs[Hostexec] = Config{e2eRegistry, "hostexec", "1.1"}
+	configs[InClusterClient] = Config{e2eRegistry, "inclusterclient", "1.0"}
+	configs[Invalid] = Config{gcRegistry, "invalid-image", "invalid-tag"}
+	configs[InvalidRegistryImage] = Config{invalidRegistry, "alpine", "3.1"}
 	configs[IpcUtils] = Config{e2eRegistry, "ipc-utils", "1.0"}
 	configs[Iperf] = Config{e2eRegistry, "iperf", "1.0"}
 	configs[JessieDnsutils] = Config{e2eRegistry, "jessie-dnsutils", "1.0"}
 	configs[Kitten] = Config{e2eRegistry, "kitten", "1.0"}
-	configs[Liveness] = Config{e2eRegistry, "liveness", "1.0"}
-	configs[LogsGenerator] = Config{e2eRegistry, "logs-generator", "1.0"}
 	configs[Mounttest] = Config{e2eRegistry, "mounttest", "1.0"}
 	configs[MounttestUser] = Config{e2eRegistry, "mounttest-user", "1.0"}
 	configs[Nautilus] = Config{e2eRegistry, "nautilus", "1.0"}
-	configs[Net] = Config{e2eRegistry, "net", "1.0"}
-	configs[Netexec] = Config{e2eRegistry, "netexec", "1.1"}
-	configs[Nettest] = Config{e2eRegistry, "nettest", "1.0"}
 	configs[Nginx] = Config{dockerLibraryRegistry, "nginx", "1.14-alpine"}
 	configs[NginxNew] = Config{dockerLibraryRegistry, "nginx", "1.15-alpine"}
 	configs[Nonewprivs] = Config{e2eRegistry, "nonewprivs", "1.0"}
-	configs[NoSnatTest] = Config{e2eRegistry, "no-snat-test", "1.0"}
-	configs[NoSnatTestProxy] = Config{e2eRegistry, "no-snat-test-proxy", "1.0"}
+	configs[NonRoot] = Config{e2eRegistry, "nonroot", "1.0"}
 	// Pause - when these values are updated, also update cmd/kubelet/app/options/container_runtime.go
 	configs[Pause] = Config{gcRegistry, "pause", "3.1"}
+	configs[Perl] = Config{dockerLibraryRegistry, "perl", "5.26"}
 	configs[Porter] = Config{e2eRegistry, "porter", "1.0"}
-	configs[PortForwardTester] = Config{e2eRegistry, "port-forward-tester", "1.0"}
+	configs[PrometheusDummyExporter] = Config{e2eRegistry, "prometheus-dummy-exporter", "v0.1.0"}
+	configs[PrometheusToSd] = Config{e2eRegistry, "prometheus-to-sd", "v0.5.0"}
 	configs[Redis] = Config{e2eRegistry, "redis", "1.0"}
 	configs[ResourceConsumer] = Config{e2eRegistry, "resource-consumer", "1.5"}
-	configs[ResourceController] = Config{e2eRegistry, "resource-consumer/controller", "1.0"}
+	configs[ResourceController] = Config{e2eRegistry, "resource-consumer-controller", "1.0"}
+	configs[SdDummyExporter] = Config{gcRegistry, "sd-dummy-exporter", "v0.2.0"}
 	configs[ServeHostname] = Config{e2eRegistry, "serve-hostname", "1.1"}
+	configs[StartupScript] = Config{googleContainerRegistry, "startup-script", "v1"}
 	configs[TestWebserver] = Config{e2eRegistry, "test-webserver", "1.0"}
 	configs[VolumeNFSServer] = Config{e2eRegistry, "volume/nfs", "1.0"}
-	configs[VolumeISCSIServer] = Config{e2eRegistry, "volume/iscsi", "1.0"}
+	configs[VolumeISCSIServer] = Config{e2eRegistry, "volume/iscsi", "2.0"}
 	configs[VolumeGlusterServer] = Config{e2eRegistry, "volume/gluster", "1.0"}
 	configs[VolumeRBDServer] = Config{e2eRegistry, "volume/rbd", "1.0.1"}
+	configs[WindowsNanoServer] = Config{e2eRegistry, "windows-nanoserver", "v1"}
 	return configs
 }
 

@@ -172,7 +172,7 @@ func RollbackV3ToV2(migrateDatadir string, ttl time.Duration) error {
 	if err := snapshotter.SaveSnap(raftSnap); err != nil {
 		return err
 	}
-	klog.Infof("Finished successfully")
+	klog.Info("Finished successfully")
 	return nil
 }
 
@@ -185,9 +185,7 @@ func traverseMetadata(head *store.NodeExtern, handleFunc func(*store.NodeExtern)
 
 		handleFunc(n)
 
-		for _, next := range n.Nodes {
-			q = append(q, next)
-		}
+		q = append(q, n.Nodes...)
 	}
 }
 

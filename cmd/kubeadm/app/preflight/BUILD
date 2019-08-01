@@ -21,11 +21,10 @@ go_library(
         "//cmd/kubeadm/app/apis/kubeadm:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/images:go_default_library",
+        "//cmd/kubeadm/app/util/initsystem:go_default_library",
         "//cmd/kubeadm/app/util/runtime:go_default_library",
         "//cmd/kubeadm/app/util/system:go_default_library",
-        "//pkg/master/ports:go_default_library",
         "//pkg/registry/core/service/ipallocator:go_default_library",
-        "//pkg/util/initsystem:go_default_library",
         "//pkg/util/ipvs:go_default_library",
         "//pkg/version:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/net:go_default_library",
@@ -39,6 +38,8 @@ go_library(
     ] + select({
         "@io_bazel_rules_go//go/platform:linux": [
             "//cmd/kubeadm/app/util:go_default_library",
+            "//pkg/proxy/ipvs:go_default_library",
+            "//pkg/util/ipset:go_default_library",
         ],
         "//conditions:default": [],
     }),

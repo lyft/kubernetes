@@ -38,6 +38,7 @@ source "${KUBE_ROOT}/test/cmd/create.sh"
 source "${KUBE_ROOT}/test/cmd/delete.sh"
 source "${KUBE_ROOT}/test/cmd/diff.sh"
 source "${KUBE_ROOT}/test/cmd/discovery.sh"
+source "${KUBE_ROOT}/test/cmd/exec.sh"
 source "${KUBE_ROOT}/test/cmd/generic-resources.sh"
 source "${KUBE_ROOT}/test/cmd/get.sh"
 source "${KUBE_ROOT}/test/cmd/kubeadm.sh"
@@ -229,7 +230,7 @@ function check-curl-proxy-code()
 function kubectl-with-retry()
 {
   ERROR_FILE="${KUBE_TEMP}/kubectl-error"
-  preserve_err_file=${PRESERVE_ERR_FILE-false}
+  preserve_err_file=${PRESERVE_ERR_FILE:-false}
   for count in {0..3}; do
     kubectl "$@" 2> ${ERROR_FILE} || true
     if grep -q "the object has been modified" "${ERROR_FILE}"; then
@@ -364,7 +365,6 @@ runTests() {
   pdb_min_available=".spec.minAvailable"
   pdb_max_unavailable=".spec.maxUnavailable"
   generation_field=".metadata.generation"
-  template_generation_field=".spec.templateGeneration"
   container_len="(len .spec.template.spec.containers)"
   image_field0="(index .spec.template.spec.containers 0).image"
   image_field1="(index .spec.template.spec.containers 1).image"
@@ -506,6 +506,16 @@ runTests() {
     record_command run_kubectl_old_print_tests
   fi
 
+  ################
+  # Kubectl exec #
+  ################
+
+  if kube::test::if_supports_resource "${pods}"; then
+    record_command run_kubectl_exec_pod_tests
+    if kube::test::if_supports_resource "${replicasets}" && kube::test::if_supports_resource "${configmaps}"; then
+      record_command run_kubectl_exec_resource_name_tests
+    fi
+  fi
 
   ######################
   # Create             #
@@ -761,6 +771,27 @@ runTests() {
 
     output_message=$(kubectl auth can-i get pods --subresource=log --quiet 2>&1 "${kube_flags[@]}"; echo $?)
     kube::test::if_has_string "${output_message}" '0'
+
+    # kubectl auth can-i get '*' does not warn about namespaced scope or print an error
+    output_message=$(kubectl auth can-i get '*' 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_not_string "${output_message}" "Warning"
+
+    # kubectl auth can-i get foo does not print a namespaced warning message, and only prints a single lookup error
+    output_message=$(kubectl auth can-i get foo 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "Warning: the server doesn't have a resource type 'foo'"
+    kube::test::if_has_not_string "${output_message}" "Warning: resource 'foo' is not namespace scoped"
+
+    # kubectl auth can-i get pods does not print a namespaced warning message or a lookup error
+    output_message=$(kubectl auth can-i get pods 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_not_string "${output_message}" "Warning"
+
+    # kubectl auth can-i get nodes prints a namespaced warning message
+    output_message=$(kubectl auth can-i get nodes 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "Warning: resource 'nodes' is not namespace scoped"
+
+    # kubectl auth can-i get nodes --all-namespaces does not print a namespaced warning message
+    output_message=$(kubectl auth can-i get nodes --all-namespaces 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_not_string "${output_message}" "Warning: resource 'nodes' is not namespace scoped"
   fi
 
   # kubectl auth reconcile

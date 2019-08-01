@@ -68,7 +68,7 @@ func GetStaticPodSpecs(cfg *kubeadmapi.ClusterConfiguration, endpoint *kubeadmap
 			ImagePullPolicy: v1.PullIfNotPresent,
 			Command:         getControllerManagerCommand(cfg, k8sVersion),
 			VolumeMounts:    staticpodutil.VolumeMountMapToSlice(mounts.GetVolumeMounts(kubeadmconstants.KubeControllerManager)),
-			LivenessProbe:   livenessProbe(staticpodutil.GetControllerManagerProbeAddress(cfg), 10252, v1.URISchemeHTTP),
+			LivenessProbe:   livenessProbe(staticpodutil.GetControllerManagerProbeAddress(cfg), kubeadmconstants.InsecureKubeControllerManagerPort, v1.URISchemeHTTP),
 			Resources:       staticpodutil.ComponentResources("200m"),
 			Env:             getProxyEnvVars(),
 		}, mounts.GetVolumes(kubeadmconstants.KubeControllerManager)),
@@ -78,7 +78,7 @@ func GetStaticPodSpecs(cfg *kubeadmapi.ClusterConfiguration, endpoint *kubeadmap
 			ImagePullPolicy: v1.PullIfNotPresent,
 			Command:         getSchedulerCommand(cfg),
 			VolumeMounts:    staticpodutil.VolumeMountMapToSlice(mounts.GetVolumeMounts(kubeadmconstants.KubeScheduler)),
-			LivenessProbe:   livenessProbe(staticpodutil.GetSchedulerProbeAddress(cfg), 10251, v1.URISchemeHTTP),
+			LivenessProbe:   livenessProbe(staticpodutil.GetSchedulerProbeAddress(cfg), kubeadmconstants.InsecureSchedulerPort, v1.URISchemeHTTP),
 			Resources:       staticpodutil.ComponentResources("100m"),
 			Env:             getProxyEnvVars(),
 		}, mounts.GetVolumes(kubeadmconstants.KubeScheduler)),
@@ -116,10 +116,10 @@ func CreateStaticPodFiles(manifestDir string, cfg *kubeadmapi.ClusterConfigurati
 
 	// creates required static pod specs
 	for _, componentName := range componentNames {
-		// retrives the StaticPodSpec for given component
+		// retrieves the StaticPodSpec for given component
 		spec, exists := specs[componentName]
 		if !exists {
-			return errors.Errorf("couldn't retrive StaticPodSpec for %q", componentName)
+			return errors.Errorf("couldn't retrieve StaticPodSpec for %q", componentName)
 		}
 
 		// writes the StaticPodSpec to disk
@@ -137,6 +137,7 @@ func CreateStaticPodFiles(manifestDir string, cfg *kubeadmapi.ClusterConfigurati
 func getAPIServerCommand(cfg *kubeadmapi.ClusterConfiguration, localAPIEndpoint *kubeadmapi.APIEndpoint) []string {
 	defaultArguments := map[string]string{
 		"advertise-address":               localAPIEndpoint.AdvertiseAddress,
+		"insecure-port":                   "0",
 		"enable-admission-plugins":        "NodeRestriction",
 		"service-cluster-ip-range":        cfg.Networking.ServiceSubnet,
 		"service-account-key-file":        filepath.Join(cfg.CertificatesDir, kubeadmconstants.ServiceAccountPublicKeyName),
@@ -295,6 +296,9 @@ func getControllerManagerCommand(cfg *kubeadmapi.ClusterConfiguration, k8sVersio
 		defaultArguments["allocate-node-cidrs"] = "true"
 		defaultArguments["cluster-cidr"] = cfg.Networking.PodSubnet
 		defaultArguments["node-cidr-mask-size"] = maskSize
+		if cfg.Networking.ServiceSubnet != "" {
+			defaultArguments["service-cluster-ip-range"] = cfg.Networking.ServiceSubnet
+		}
 	}
 
 	command := []string{"kube-controller-manager"}
