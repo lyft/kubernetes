@@ -196,6 +196,7 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 		}
 
 		// Fill available stats for full set of required pod stats
+		klog.V(2).Infof("listPodStats container %+v", container)
 		cs := p.makeContainerStats(stats, container, &rootFsInfo, fsIDtoInfo, podSandbox.GetMetadata(), updateCPUNanoCoreUsage)
 		p.addPodNetworkStats(ps, podSandboxID, caInfos, cs, containerNetworkStats[podSandboxID])
 		p.addPodCPUMemoryStats(ps, types.UID(podSandbox.Metadata.Uid), allInfos, cs)
@@ -508,6 +509,11 @@ func (p *criStatsProvider) makeContainerStats(
 		Rootfs:    &statsapi.FsStats{},
 		// UserDefinedMetrics is not supported by CRI.
 	}
+	klog.V(2).Infof("stats passed in: %+v", stats)
+	klog.V(2).Infof("stats.Memory passed in: %+v", stats.Memory)
+	klog.V(2).Infof("statsapi.containerstats %+v", result)
+	klog.V(2).Infof("statsapi.memorystats %+v", result.Memory)
+	klog.V(2).Infof("result.Memory.WorkingSetBytes", result.Memory.WorkingSetBytes)
 	if stats.Cpu != nil {
 		result.CPU.Time = metav1.NewTime(time.Unix(0, stats.Cpu.Timestamp))
 		if stats.Cpu.UsageCoreNanoSeconds != nil {
@@ -530,9 +536,11 @@ func (p *criStatsProvider) makeContainerStats(
 	if stats.Memory != nil {
 		result.Memory.Time = metav1.NewTime(time.Unix(0, stats.Memory.Timestamp))
 		if stats.Memory.WorkingSetBytes != nil {
+			klog.V(2).Infof("stats.Memory.WorkingSetBytes was not nil")
 			result.Memory.WorkingSetBytes = &stats.Memory.WorkingSetBytes.Value
 		}
 	} else {
+		klog.V(2).Infof("stats.Memory.WorkingSetBytes was nil, setting it to 0")
 		result.Memory.Time = metav1.NewTime(time.Unix(0, time.Now().UnixNano()))
 		result.Memory.WorkingSetBytes = uint64Ptr(0)
 	}
@@ -575,6 +583,8 @@ func (p *criStatsProvider) makeContainerStats(
 	if err != nil {
 		klog.Errorf("Unable to fetch container log stats for path %s: %v ", containerLogPath, err)
 	}
+
+	klog.V(2).Infof("final result returned from makeContainerStats: %+v", result)
 	return result
 }
 
