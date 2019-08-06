@@ -100,6 +100,8 @@ func newCRIStatsProvider(
 // ListPodStats returns the stats of all the pod-managed containers.
 func (p *criStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	// Don't update CPU nano core usage.
+	klog.Warningf("in cri_stats_provider ListPodStats(). dont update cpu nano core")
+	fmt.Println("in cri_stats_provider ListPodStats(). dont update cpu nano core")
 	return p.listPodStats(false)
 }
 
@@ -115,6 +117,9 @@ func (p *criStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 // the only caller, and it calls this function every 10s.
 func (p *criStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.PodStats, error) {
 	// Update CPU nano core usage.
+
+	klog.Warningf("in cri_stats_provider ListPodStats(). will update cpu nano core")
+	fmt.Println("in cri_stats_provider ListPodStats(). will update cpu nano core")
 	return p.listPodStats(true)
 }
 
@@ -127,6 +132,8 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 	}
 
 	containers, err := p.runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
+	klog.Warningf("containers before removal are %+v ", containers)
+	fmt.Println("containers before removal are %+v ", containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all containers: %v", err)
 	}
@@ -134,10 +141,14 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 	// Creates pod sandbox map.
 	podSandboxMap := make(map[string]*runtimeapi.PodSandbox)
 	podSandboxes, err := p.runtimeService.ListPodSandbox(&runtimeapi.PodSandboxFilter{})
+	klog.Warningf("podsandboxes before removal: %+v", podSandboxes)
+	fmt.Println("podsandboxes before removal: %+v", podSandboxes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all pod sandboxes: %v", err)
 	}
 	podSandboxes = removeTerminatedPods(podSandboxes)
+	klog.Warningf("podsandboxes after removal: %+v", podSandboxes)
+	fmt.Println("podsandboxes after removal: %+v", podSandboxes)
 	for _, s := range podSandboxes {
 		podSandboxMap[s.Id] = s
 	}
@@ -150,11 +161,15 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 	sandboxIDToPodStats := make(map[string]*statsapi.PodStats)
 
 	resp, err := p.runtimeService.ListContainerStats(&runtimeapi.ContainerStatsFilter{})
+	klog.Warningf("container stats list before removal: %+v", resp)
+	fmt.Println("container stats list before removal: %+v", resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all container stats: %v", err)
 	}
 
 	containers = removeTerminatedContainers(containers)
+	klog.Warningf("containers after removal: %+v", containers)
+	fmt.Println("containers after removal: %+v", containers)
 	// Creates container map.
 	containerMap := make(map[string]*runtimeapi.Container)
 	for _, c := range containers {
@@ -196,7 +211,8 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 		}
 
 		// Fill available stats for full set of required pod stats
-		klog.V(2).Infof("listPodStats container %+v", container)
+		klog.Warningf("listPodStats container %+v", container)
+		fmt.Println("listPodStats container %+v", container)
 		cs := p.makeContainerStats(stats, container, &rootFsInfo, fsIDtoInfo, podSandbox.GetMetadata(), updateCPUNanoCoreUsage)
 		p.addPodNetworkStats(ps, podSandboxID, caInfos, cs, containerNetworkStats[podSandboxID])
 		p.addPodCPUMemoryStats(ps, types.UID(podSandbox.Metadata.Uid), allInfos, cs)
@@ -509,11 +525,11 @@ func (p *criStatsProvider) makeContainerStats(
 		Rootfs:    &statsapi.FsStats{},
 		// UserDefinedMetrics is not supported by CRI.
 	}
-	klog.V(2).Infof("stats passed in: %+v", stats)
-	klog.V(2).Infof("stats.Memory passed in: %+v", stats.Memory)
-	klog.V(2).Infof("statsapi.containerstats %+v", result)
-	klog.V(2).Infof("statsapi.memorystats %+v", result.Memory)
-	klog.V(2).Infof("result.Memory.WorkingSetBytes", result.Memory.WorkingSetBytes)
+	klog.Warningf("stats passed in: %+v", stats)
+	klog.Warningf("stats.Memory passed in: %+v", stats.Memory)
+	klog.Warningf("statsapi.containerstats %+v", result)
+	klog.Warningf("statsapi.memorystats %+v", result.Memory)
+	klog.Warningf("result.Memory.WorkingSetBytes", result.Memory.WorkingSetBytes)
 	if stats.Cpu != nil {
 		result.CPU.Time = metav1.NewTime(time.Unix(0, stats.Cpu.Timestamp))
 		if stats.Cpu.UsageCoreNanoSeconds != nil {
@@ -536,11 +552,13 @@ func (p *criStatsProvider) makeContainerStats(
 	if stats.Memory != nil {
 		result.Memory.Time = metav1.NewTime(time.Unix(0, stats.Memory.Timestamp))
 		if stats.Memory.WorkingSetBytes != nil {
-			klog.V(2).Infof("stats.Memory.WorkingSetBytes was not nil")
+			klog.Warningf("stats.Memory.WorkingSetBytes was not nil")
+			fmt.Println("stats.Memory.WorkingSetBytes was not nil")
 			result.Memory.WorkingSetBytes = &stats.Memory.WorkingSetBytes.Value
 		}
 	} else {
-		klog.V(2).Infof("stats.Memory.WorkingSetBytes was nil, setting it to 0")
+		klog.Warningf("stats.Memory.WorkingSetBytes was nil, setting it to 0")
+		fmt.Println("stats.Memory.WorkingSetBytes was nil, setting it to 0")
 		result.Memory.Time = metav1.NewTime(time.Unix(0, time.Now().UnixNano()))
 		result.Memory.WorkingSetBytes = uint64Ptr(0)
 	}
@@ -584,7 +602,8 @@ func (p *criStatsProvider) makeContainerStats(
 		klog.Errorf("Unable to fetch container log stats for path %s: %v ", containerLogPath, err)
 	}
 
-	klog.V(2).Infof("final result returned from makeContainerStats: %+v", result)
+	klog.Warningf("final result returned from makeContainerStats: %+v", result)
+	fmt.Println("final result returned from makeContainerStats: %+v", result)
 	return result
 }
 
@@ -714,6 +733,8 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	sort.Slice(pods, func(i, j int) bool {
 		return pods[i].CreatedAt < pods[j].CreatedAt
 	})
+	fmt.Println("removeterminated pods Pods before %+v", pods)
+	klog.Warningf("removeterminated pods Pods before %+v", pods)
 	for _, pod := range pods {
 		refID := statsapi.PodReference{
 			Name:      pod.GetMetadata().GetName(),
@@ -722,6 +743,9 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 		}
 		podMap[refID] = append(podMap[refID], pod)
 	}
+
+	klog.Warningf("removeterminated pods Pods after %+v", podMap)
+	fmt.Println("removeterminated pods Pods after %+v", podMap)
 
 	result := make([]*runtimeapi.PodSandbox, 0)
 	for _, refs := range podMap {
@@ -740,6 +764,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 			result = append(result, refs[len(refs)-1])
 		}
 	}
+	klog.Warningf("removeterminated pods result %+v", result)
 	return result
 }
 
@@ -752,6 +777,8 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	sort.Slice(containers, func(i, j int) bool {
 		return containers[i].CreatedAt < containers[j].CreatedAt
 	})
+	fmt.Println("removeterminated containers before %+v", containers)
+	klog.Warningf("removeterminated containers before %+v", containers)
 	for _, container := range containers {
 		refID := containerID{
 			podRef:        buildPodRef(container.Labels),
@@ -759,7 +786,8 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 		}
 		containerMap[refID] = append(containerMap[refID], container)
 	}
-
+	fmt.Println("removeterminated containers after %+v", containerMap)
+	klog.Warningf("removeterminated containers after %+v", containerMap)
 	result := make([]*runtimeapi.Container, 0)
 	for _, refs := range containerMap {
 		if len(refs) == 1 {
@@ -777,6 +805,8 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 			result = append(result, refs[len(refs)-1])
 		}
 	}
+	fmt.Println("removeterminated containers result %+v", result)
+	klog.Warningf("removeterminated containers result %+v", result)
 	return result
 }
 

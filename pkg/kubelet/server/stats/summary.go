@@ -88,7 +88,11 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	if updateStats {
 		podStats, err = sp.provider.ListPodStatsAndUpdateCPUNanoCoreUsage()
 	} else {
+		klog.Warningf("in summaryProvider Get()")
+		fmt.Println("in summaryProvider Get()")
 		podStats, err = sp.provider.ListPodStats()
+		klog.Warningf("podStats %+v", podStats)
+		fmt.Println("podStats %+v", podStats)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pod stats: %v", err)
@@ -103,7 +107,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		NodeName:         node.Name,
 		CPU:              rootStats.CPU,
 		Memory:           rootStats.Memory,
-		Network:          networkStats,
+	Network:          networkStats,
 		StartTime:        sp.systemBootTime,
 		Fs:               rootFsStats,
 		Runtime:          &statsapi.RuntimeStats{ImageFs: imageFsStats},
