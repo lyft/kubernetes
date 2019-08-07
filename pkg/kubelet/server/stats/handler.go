@@ -222,7 +222,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "onlycpuandmemory: %+v", onlyCPUAndMemory)
@@ -232,7 +232,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "handleSummary summary: %+v", summary)
@@ -242,7 +242,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "onlycpuandmemory: %+v", onlyCPUAndMemory)
@@ -254,7 +254,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "handleSummary summary: %+v", summary)

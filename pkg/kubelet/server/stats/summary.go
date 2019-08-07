@@ -90,7 +90,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "in SummaryProvider Get(), updateStats=True: podStats %+v", podStats)
@@ -103,7 +103,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "in SummaryProvider Get(), updateStats=false: podStats %+v", podStats)
@@ -165,7 +165,7 @@ func (sp *summaryProviderImpl) GetCPUAndMemoryStats() (*statsapi.Summary, error)
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "In SummaryProvider GetCPUAndMemoryStats(): podStats %+v", podStats)

@@ -106,7 +106,7 @@ func (p *criStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "in cri_stats_provider ListPodStats(). dont update cpu nano core: %+v", p)
@@ -131,7 +131,7 @@ func (p *criStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.P
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "in cri_stats_provider ListPodStats(). will update cpu nano core: %+v", p)
@@ -548,7 +548,7 @@ func (p *criStatsProvider) makeContainerStats(
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "stats passed in: %+v", stats)
@@ -579,7 +579,7 @@ func (p *criStatsProvider) makeContainerStats(
 			f, err := os.OpenFile("/tmp/debug.log",
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
-				log.Println(err)
+				fmt.Println(err)
 			}
 			defer f.Close()
 			fmt.Fprintf(f, "stats.Memory.WorkingSetBytes was not nil: %+v", stats.Memory)
@@ -591,7 +591,7 @@ func (p *criStatsProvider) makeContainerStats(
 		f, err := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		defer f.Close()
 		fmt.Fprintf(f, "stats.Memory.WorkingSetBytes was nil, setting it to 0: %+v", stats.Memory)
@@ -645,7 +645,7 @@ func (p *criStatsProvider) makeContainerStats(
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "final result returned from makeContainerStats: %+v", result)
@@ -783,7 +783,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated pods before %+v", pods)
@@ -803,7 +803,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated pods after %+v", podMap)
@@ -830,7 +830,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated pods result %+v", result)
@@ -851,7 +851,7 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated containers before %+v", containers)
@@ -867,7 +867,7 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated containers after %+v", containers)
@@ -893,7 +893,7 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	f, err := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "removeterminated containers result %+v", containers)
