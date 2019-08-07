@@ -229,7 +229,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		summary, err = h.summaryProvider.GetCPUAndMemoryStats()
 		klog.Warningf("handleSummary summary: %+v", summary)
 		fmt.Println("handleSummary summary: %+v", summary)
-		f, err2 := os.OpenFile("/tmp/debug.log",
+		f, err2 = os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err2 != nil {
 			fmt.Println(err)
@@ -251,7 +251,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		summary, err = h.summaryProvider.Get(forceStatsUpdate)
 		klog.Warningf("handleSummary summary: %+v", summary)
 		fmt.Println("handleSummary summary: %+v", summary)
-		f, err2 := os.OpenFile("/tmp/debug.log",
+		f, err2 = os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err2 != nil {
 			fmt.Println(err)
