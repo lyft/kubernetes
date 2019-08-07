@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"path"
 	"time"
+	"os"
 
 	restful "github.com/emicklei/go-restful"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
@@ -216,11 +217,47 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 	var summary *statsapi.Summary
 	var err error
 	if onlyCPUAndMemory {
+		klog.Warningf("onlycpuandmemory: %+v", onlyCPUAndMemory)
+		fmt.Println("onlycpuandmemory: %+v", onlyCPUAndMemory)
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "onlycpuandmemory: %+v", onlyCPUAndMemory)
 		summary, err = h.summaryProvider.GetCPUAndMemoryStats()
+		klog.Warningf("handleSummary summary: %+v", summary)
+		fmt.Println("handleSummary summary: %+v", summary)
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "handleSummary summary: %+v", summary)
 	} else {
+		klog.Warningf("onlycpuandmemory: %+v", onlyCPUAndMemory)
+		fmt.Println("onlycpuandmemory: %+v", onlyCPUAndMemory)
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "onlycpuandmemory: %+v", onlyCPUAndMemory)
 		// external calls to the summary API use cached stats
 		forceStatsUpdate := false
 		summary, err = h.summaryProvider.Get(forceStatsUpdate)
+		klog.Warningf("handleSummary summary: %+v", summary)
+		fmt.Println("handleSummary summary: %+v", summary)
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "handleSummary summary: %+v", summary)
 	}
 	if err != nil {
 		handleError(response, "/stats/summary", err)
