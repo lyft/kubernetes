@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os"
 
 	cadvisorfs "github.com/google/cadvisor/fs"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
@@ -102,6 +103,13 @@ func (p *criStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	// Don't update CPU nano core usage.
 	klog.Warningf("in cri_stats_provider ListPodStats(). dont update cpu nano core")
 	fmt.Println("in cri_stats_provider ListPodStats(). dont update cpu nano core")
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "in cri_stats_provider ListPodStats(). dont update cpu nano core: %+v", p)
 	return p.listPodStats(false)
 }
 
@@ -120,6 +128,13 @@ func (p *criStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.P
 
 	klog.Warningf("in cri_stats_provider ListPodStats(). will update cpu nano core")
 	fmt.Println("in cri_stats_provider ListPodStats(). will update cpu nano core")
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "in cri_stats_provider ListPodStats(). will update cpu nano core: %+v", p)
 	return p.listPodStats(true)
 }
 
@@ -530,6 +545,13 @@ func (p *criStatsProvider) makeContainerStats(
 	klog.Warningf("statsapi.containerstats %+v", result)
 	klog.Warningf("statsapi.memorystats %+v", result.Memory)
 	klog.Warningf("result.Memory.WorkingSetBytes", result.Memory.WorkingSetBytes)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "stats passed in: %+v", stats)
 	if stats.Cpu != nil {
 		result.CPU.Time = metav1.NewTime(time.Unix(0, stats.Cpu.Timestamp))
 		if stats.Cpu.UsageCoreNanoSeconds != nil {
@@ -554,11 +576,26 @@ func (p *criStatsProvider) makeContainerStats(
 		if stats.Memory.WorkingSetBytes != nil {
 			klog.Warningf("stats.Memory.WorkingSetBytes was not nil")
 			fmt.Println("stats.Memory.WorkingSetBytes was not nil")
+			f, err := os.OpenFile("/tmp/debug.log",
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				log.Println(err)
+			}
+			defer f.Close()
+			fmt.Fprintf(f, "stats.Memory.WorkingSetBytes was not nil: %+v", stats.Memory)
 			result.Memory.WorkingSetBytes = &stats.Memory.WorkingSetBytes.Value
 		}
 	} else {
 		klog.Warningf("stats.Memory.WorkingSetBytes was nil, setting it to 0")
 		fmt.Println("stats.Memory.WorkingSetBytes was nil, setting it to 0")
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "stats.Memory.WorkingSetBytes was nil, setting it to 0: %+v", stats.Memory)
+	return result
 		result.Memory.Time = metav1.NewTime(time.Unix(0, time.Now().UnixNano()))
 		result.Memory.WorkingSetBytes = uint64Ptr(0)
 	}
@@ -604,6 +641,14 @@ func (p *criStatsProvider) makeContainerStats(
 
 	klog.Warningf("final result returned from makeContainerStats: %+v", result)
 	fmt.Println("final result returned from makeContainerStats: %+v", result)
+
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "final result returned from makeContainerStats: %+v", result)
 	return result
 }
 
@@ -735,6 +780,14 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	})
 	fmt.Println("removeterminated pods Pods before %+v", pods)
 	klog.Warningf("removeterminated pods Pods before %+v", pods)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated pods before %+v", pods)
+	
 	for _, pod := range pods {
 		refID := statsapi.PodReference{
 			Name:      pod.GetMetadata().GetName(),
@@ -746,6 +799,14 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 
 	klog.Warningf("removeterminated pods Pods after %+v", podMap)
 	fmt.Println("removeterminated pods Pods after %+v", podMap)
+
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated pods after %+v", podMap)
 
 	result := make([]*runtimeapi.PodSandbox, 0)
 	for _, refs := range podMap {
@@ -765,6 +826,14 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 		}
 	}
 	klog.Warningf("removeterminated pods result %+v", result)
+
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated pods result %+v", result)
 	return result
 }
 
@@ -779,6 +848,13 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	})
 	fmt.Println("removeterminated containers before %+v", containers)
 	klog.Warningf("removeterminated containers before %+v", containers)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated containers before %+v", containers)
 	for _, container := range containers {
 		refID := containerID{
 			podRef:        buildPodRef(container.Labels),
@@ -788,6 +864,13 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	}
 	fmt.Println("removeterminated containers after %+v", containerMap)
 	klog.Warningf("removeterminated containers after %+v", containerMap)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated containers after %+v", containers)
 	result := make([]*runtimeapi.Container, 0)
 	for _, refs := range containerMap {
 		if len(refs) == 1 {
@@ -807,6 +890,13 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	}
 	fmt.Println("removeterminated containers result %+v", result)
 	klog.Warningf("removeterminated containers result %+v", result)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "removeterminated containers result %+v", containers)
 	return result
 }
 

@@ -18,7 +18,7 @@ package stats
 
 import (
 	"fmt"
-
+	"os"
 	"k8s.io/klog"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,12 +87,26 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	var podStats []statsapi.PodStats
 	if updateStats {
 		podStats, err = sp.provider.ListPodStatsAndUpdateCPUNanoCoreUsage()
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "in SummaryProvider Get(), updateStats=True: podStats %+v", podStats)
 	} else {
 		klog.Warningf("in summaryProvider Get()")
 		fmt.Println("in summaryProvider Get()")
 		podStats, err = sp.provider.ListPodStats()
 		klog.Warningf("podStats %+v", podStats)
 		fmt.Println("podStats %+v", podStats)
+		f, err := os.OpenFile("/tmp/debug.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+		defer f.Close()
+		fmt.Fprintf(f, "in SummaryProvider Get(), updateStats=false: podStats %+v", podStats)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pod stats: %v", err)
@@ -107,7 +121,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		NodeName:         node.Name,
 		CPU:              rootStats.CPU,
 		Memory:           rootStats.Memory,
-	Network:          networkStats,
+		Network:          networkStats,
 		StartTime:        sp.systemBootTime,
 		Fs:               rootFsStats,
 		Runtime:          &statsapi.RuntimeStats{ImageFs: imageFsStats},
@@ -146,6 +160,16 @@ func (sp *summaryProviderImpl) GetCPUAndMemoryStats() (*statsapi.Summary, error)
 		StartTime:        rootStats.StartTime,
 		SystemContainers: sp.GetSystemContainersCPUAndMemoryStats(nodeConfig, podStats, false),
 	}
+	klog.Warningf("podStats %+v", podStats)
+	fmt.Println("podStats %+v", podStats)
+	f, err := os.OpenFile("/tmp/debug.log",
+	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "In SummaryProvider GetCPUAndMemoryStats(): podStats %+v", podStats)
+
 	summary := statsapi.Summary{
 		Node: nodeStats,
 		Pods: podStats,
