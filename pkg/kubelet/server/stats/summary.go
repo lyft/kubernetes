@@ -87,9 +87,9 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	var podStats []statsapi.PodStats
 	if updateStats {
 		podStats, err = sp.provider.ListPodStatsAndUpdateCPUNanoCoreUsage()
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err2 != nil {
 			fmt.Println(err)
 		}
 		defer f.Close()
@@ -100,9 +100,9 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		podStats, err = sp.provider.ListPodStats()
 		klog.Warningf("podStats %+v", podStats)
 		fmt.Println("podStats %+v", podStats)
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err2 != nil {
 			fmt.Println(err)
 		}
 		defer f.Close()
@@ -162,9 +162,9 @@ func (sp *summaryProviderImpl) GetCPUAndMemoryStats() (*statsapi.Summary, error)
 	}
 	klog.Warningf("podStats %+v", podStats)
 	fmt.Println("podStats %+v", podStats)
-	f, err := os.OpenFile("/tmp/debug.log",
+	f, err2 := os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
+	if err2 != nil {
 		fmt.Println(err)
 	}
 	defer f.Close()

@@ -219,7 +219,7 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 	if onlyCPUAndMemory {
 		klog.Warningf("onlycpuandmemory: %+v", onlyCPUAndMemory)
 		fmt.Println("onlycpuandmemory: %+v", onlyCPUAndMemory)
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Println(err)
@@ -229,9 +229,9 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		summary, err = h.summaryProvider.GetCPUAndMemoryStats()
 		klog.Warningf("handleSummary summary: %+v", summary)
 		fmt.Println("handleSummary summary: %+v", summary)
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err2 != nil {
 			fmt.Println(err)
 		}
 		defer f.Close()
@@ -239,9 +239,9 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 	} else {
 		klog.Warningf("onlycpuandmemory: %+v", onlyCPUAndMemory)
 		fmt.Println("onlycpuandmemory: %+v", onlyCPUAndMemory)
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err2 != nil {
 			fmt.Println(err)
 		}
 		defer f.Close()
@@ -251,9 +251,9 @@ func (h *handler) handleSummary(request *restful.Request, response *restful.Resp
 		summary, err = h.summaryProvider.Get(forceStatsUpdate)
 		klog.Warningf("handleSummary summary: %+v", summary)
 		fmt.Println("handleSummary summary: %+v", summary)
-		f, err := os.OpenFile("/tmp/debug.log",
+		f, err2 := os.OpenFile("/tmp/debug.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err2 != nil {
 			fmt.Println(err)
 		}
 		defer f.Close()
