@@ -829,7 +829,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 
 	f, err2 = os.OpenFile("/tmp/debug.log",
 	os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if er2 != nil {
+	if err2 != nil {
 		fmt.Println(err2)
 	}
 	defer f.Close()
