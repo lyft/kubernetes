@@ -86,7 +86,7 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	var podStats []statsapi.PodStats
 	if updateStats {
 		podStats, err = sp.provider.ListPodStatsAndUpdateCPUNanoCoreUsage()
-		klog.Warningf(f, "in SummaryProvider Get(), updateStats=True: podStats %+v", podStats)
+		klog.Warningf("in SummaryProvider Get(), updateStats=True: podStats %+v", podStats)
 	} else {
 		klog.Warningf("in summaryProvider Get() updateStats=false")
 		klog.Warningf("in summaryProvider Get() updateStats=false provider type %T", sp.provider)
