@@ -117,7 +117,7 @@ func (p *criStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 func (p *criStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.PodStats, error) {
 	// Update CPU nano core usage.
 
-	klog.Warningf(f, "in cri_stats_provider ListPodStats(). will update cpu nano core: %+v", p)
+	klog.Warningf("in cri_stats_provider ListPodStats(). will update cpu nano core: %+v", p)
 	return p.listPodStats(true)
 }
 
