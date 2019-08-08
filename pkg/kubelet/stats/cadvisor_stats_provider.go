@@ -73,6 +73,9 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	// Gets node root filesystem information and image filesystem stats, which
 	// will be used to populate the available and capacity bytes/inodes in
 	// container stats.
+
+	klog.Warningf("in cadvisor_stats_provider.ListPodStats: %+v", p)
+
 	rootFsInfo, err := p.cadvisor.RootFsInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs info: %v", err)
@@ -87,7 +90,12 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	}
 	// removeTerminatedContainerInfo will also remove pod level cgroups, so save the infos into allInfos first
 	allInfos := infos
+	klog.Warningf("in cadvisor_stats_provider.ListPodStats allInfos: %+v", allInfos)
+
 	infos = removeTerminatedContainerInfo(infos)
+
+	klog.Warningf("in cadvisor_stats_provider.ListPodStats (after removeterminatedcontainerinfo) infos: %+v", infos)
+
 	// Map each container to a pod and update the PodStats with container data.
 	podToStats := map[statsapi.PodReference]*statsapi.PodStats{}
 	for key, cinfo := range infos {
@@ -115,11 +123,17 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 		// Update the PodStats entry with the stats from the container by
 		// adding it to podStats.Containers.
 		containerName := kubetypes.GetContainerName(cinfo.Spec.Labels)
+		klog.Warningf("in cadvisor_stats_provider.ListPodStats looking up stats for containerName: %+v", containerName)
+
 		if containerName == leaky.PodInfraContainerName {
 			// Special case for infrastructure container which is hidden from
 			// the user and has network stats.
+			klog.Warningf("in cadvisor_stats_provider.ListPodStats not appending container: %+v", containerName)
+
 			podStats.Network = cadvisorInfoToNetworkStats("pod:"+ref.Namespace+"_"+ref.Name, &cinfo)
 		} else {
+			klog.Warningf("in cadvisor_stats_provider.ListPodStats appending container: %+v", containerName)
+
 			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo, &imageFsInfo))
 		}
 	}
@@ -152,6 +166,8 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 		}
 	}
 
+	klog.Warningf("in cadvisor_stats_provider.ListPodStats result: %+v", result)
+
 	return result, nil
 }
 
@@ -160,18 +176,26 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 // For cadvisor, cpu nano core usages are pre-computed and cached, so this
 // function simply calls ListPodStats.
 func (p *cadvisorStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.PodStats, error) {
+	klog.Warningf("in cadvisor_stats_provider.ListPodStatsAndUpdateCPUNanoCoreUsage: %+v", p)
+
 	return p.ListPodStats()
 }
 
 // ListPodCPUAndMemoryStats returns the cpu and memory stats of all the pod-managed containers.
 func (p *cadvisorStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, error) {
+	klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats: %+v", p)
+
 	infos, err := getCadvisorContainerInfo(p.cadvisor)
+	klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats (before remove terminated) infos: %+v", infos)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container info from cadvisor: %v", err)
 	}
 	// removeTerminatedContainerInfo will also remove pod level cgroups, so save the infos into allInfos first
 	allInfos := infos
 	infos = removeTerminatedContainerInfo(infos)
+	klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats (after remove terminated) infos: %+v", infos)
+
 	// Map each container to a pod and update the PodStats with container data.
 	podToStats := map[statsapi.PodReference]*statsapi.PodStats{}
 	for key, cinfo := range infos {
@@ -199,11 +223,17 @@ func (p *cadvisorStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats,
 		// Update the PodStats entry with the stats from the container by
 		// adding it to podStats.Containers.
 		containerName := kubetypes.GetContainerName(cinfo.Spec.Labels)
+		klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats looking up containerName: %+v", containerName)
+
 		if containerName == leaky.PodInfraContainerName {
 			// Special case for infrastructure container which is hidden from
 			// the user and has network stats.
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats not appending containerName: %+v", containerName)
+
 			podStats.StartTime = metav1.NewTime(cinfo.Spec.CreationTime)
 		} else {
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats appending ContainerName: %+v", containerName)
+
 			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerCPUAndMemoryStats(containerName, &cinfo))
 		}
 	}
@@ -215,12 +245,22 @@ func (p *cadvisorStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats,
 		// Lookup the pod-level cgroup's CPU and memory stats
 		podInfo := getCadvisorPodInfoFromPodUID(podUID, allInfos)
 		if podInfo != nil {
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats podInfo (not nil): %+v", podInfo)
+
 			cpu, memory := cadvisorInfoToCPUandMemoryStats(podInfo)
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats: %+v", p)
+
 			podStats.CPU = cpu
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats podStats.CPU: %+v", cpu)
+
 			podStats.Memory = memory
+			klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats podStats.Memory: %+v", memory)
+
 		}
 		result = append(result, *podStats)
 	}
+	klog.Warningf("in cadvisor_stats_provider.ListPodCPUAndMemoryStats result: %+v", result)
+
 
 	return result, nil
 }
@@ -308,6 +348,8 @@ func getCadvisorPodInfoFromPodUID(podUID types.UID, infos map[string]cadvisorapi
 // A ContainerInfo is considered to be of a terminated container if it has an
 // older CreationTime and zero CPU instantaneous and memory RSS usage.
 func removeTerminatedContainerInfo(containerInfo map[string]cadvisorapiv2.ContainerInfo) map[string]cadvisorapiv2.ContainerInfo {
+	klog.Warningf("in cadvisor_stats_provider.removeTerminatedContainerInfo containerinfo passed in: %+v", containerInfo)
+
 	cinfoMap := make(map[containerID][]containerInfoWithCgroup)
 	for key, cinfo := range containerInfo {
 		if !isPodManagedContainer(&cinfo) {
@@ -317,6 +359,8 @@ func removeTerminatedContainerInfo(containerInfo map[string]cadvisorapiv2.Contai
 			podRef:        buildPodRef(cinfo.Spec.Labels),
 			containerName: kubetypes.GetContainerName(cinfo.Spec.Labels),
 		}
+		klog.Warningf("in cadvisor_stats_provider.removeTerminatedContainerInfo appending key %+v: %+v", key, cinfo)
+
 		cinfoMap[cinfoID] = append(cinfoMap[cinfoID], containerInfoWithCgroup{
 			cinfo:  cinfo,
 			cgroup: key,
@@ -330,10 +374,14 @@ func removeTerminatedContainerInfo(containerInfo map[string]cadvisorapiv2.Contai
 		}
 		sort.Sort(ByCreationTime(refs))
 		i := 0
+		klog.Warningf("in cadvisor_stats_provider.removeTerminatedContainerInfo refs: %+v", refs)
+
 		for ; i < len(refs); i++ {
 			if hasMemoryAndCPUInstUsage(&refs[i].cinfo) {
 				// Stops removing when we first see an info with non-zero
 				// CPU/Memory usage.
+				klog.Warningf("in cadvisor_stats_provider.removeTerminatedContainerInfo found nonzero info: %+v", refs[i].cinfo)
+
 				break
 			}
 		}
@@ -341,6 +389,8 @@ func removeTerminatedContainerInfo(containerInfo map[string]cadvisorapiv2.Contai
 			result[refs[i].cgroup] = refs[i].cinfo
 		}
 	}
+	klog.Warningf("in cadvisor_stats_provider.removeTerminatedContainerInfo result: %+v", result)
+
 	return result
 }
 
@@ -377,25 +427,35 @@ type containerInfoWithCgroup struct {
 // both non-zero CPU instantaneous usage and non-zero memory RSS usage, and
 // false otherwise.
 func hasMemoryAndCPUInstUsage(info *cadvisorapiv2.ContainerInfo) bool {
+	klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage: %+v", info)
+
 	if !info.Spec.HasCpu || !info.Spec.HasMemory {
+		klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage, either no memory or cpu usage found on info.Spec, hasCPU %+v , hasMemory %+v", info.Spec.HasCpu, info.Spec.HasMemory)
 		return false
 	}
 	cstat, found := latestContainerStats(info)
+	klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage cstat: %+v", cstat)
 	if !found {
+		klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage !found, returning false: %+v", found)
 		return false
 	}
 	if cstat.CpuInst == nil {
+		klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage cpuInst is nil, returing false: %+v", cstat.CpuInst)
 		return false
 	}
+	klog.Warningf("in cadvisor_stats_provider.hasMemoryAndCPUInstUsage cstat.CpuInst.Usage.Total: %+v, cstat.Memory.Rss: %+v", cstat.CpuInst.Usage.Total, cstat.Memory.RSS)
 	return cstat.CpuInst.Usage.Total != 0 && cstat.Memory.RSS != 0
 }
 
 func getCadvisorContainerInfo(ca cadvisor.Interface) (map[string]cadvisorapiv2.ContainerInfo, error) {
+	klog.Warningf("in cadvisor_stats_provider.getCadvisorContainerInfo: %+v", ca)
 	infos, err := ca.ContainerInfoV2("/", cadvisorapiv2.RequestOptions{
 		IdType:    cadvisorapiv2.TypeName,
 		Count:     2, // 2 samples are needed to compute "instantaneous" CPU
 		Recursive: true,
 	})
+	klog.Warningf("in cadvisor_stats_provider.getCadvisorContainerInfo infos: %+v", infos)
+
 	if err != nil {
 		if _, ok := infos["/"]; ok {
 			// If the failure is partial, log it and return a best-effort
