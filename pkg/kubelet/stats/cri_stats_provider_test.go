@@ -764,6 +764,7 @@ func makeFakeLogStats(seed int) *volume.Metrics {
 func TestGetContainerUsageNanoCores(t *testing.T) {
 	var value0 uint64
 	var value1 uint64 = 10000000000
+	var value2 uint64 = 188427786383
 
 	// Test with a large container of 100+ CPUs
 	var value2 uint64 = 188427786383
@@ -890,31 +891,6 @@ func TestGetContainerUsageNanoCores(t *testing.T) {
 				},
 			},
 			expected: &value2,
-		},
-		{
-			desc: "should return nil if cpuacct is reset to 0 in a live container",
-			stats: &runtimeapi.ContainerStats{
-				Attributes: &runtimeapi.ContainerAttributes{
-					Id: "1",
-				},
-				Cpu: &runtimeapi.CpuUsage{
-					Timestamp: 2,
-					UsageCoreNanoSeconds: &runtimeapi.UInt64Value{
-						Value: 0,
-					},
-				},
-			},
-			cpuUsageCache: map[string]*cpuUsageRecord{
-				"1": {
-					stats: &runtimeapi.CpuUsage{
-						Timestamp: 1,
-						UsageCoreNanoSeconds: &runtimeapi.UInt64Value{
-							Value: 10000000000,
-						},
-					},
-				},
-			},
-			expected: nil,
 		},
 	}
 	for _, test := range tests {
