@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,7 @@ import (
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -2110,10 +2110,19 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		// to the pod manager.
 		kl.podManager.UpdatePod(pod)
 
+		sidecarsStatus := status.GetSidecarsStatus(pod)
+
 		// Reconcile Pod "Ready" condition if necessary. Trigger sync pod for reconciliation.
 		if status.NeedToReconcilePodReadiness(pod) {
 			mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
 			kl.dispatchWork(pod, kubetypes.SyncPodSync, mirrorPod, start)
+		} else if sidecarsStatus.ContainersWaiting {
+			// if containers aren't running and the sidecars are all ready trigger a sync so that the containers get started
+			if sidecarsStatus.SidecarsPresent && sidecarsStatus.SidecarsReady {
+				klog.Infof("Pod: %s: sidecars: sidecars are ready, dispatching work", format.Pod(pod))
+				mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
+				kl.dispatchWork(pod, kubetypes.SyncPodSync, mirrorPod, start)
+			}
 		}
 
 		// After an evicted pod is synced, all dead containers in the pod can be removed.
