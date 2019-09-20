@@ -647,7 +647,7 @@ func (p *criStatsProvider) getContainerUsageNanoCores(stats *runtimeapi.Containe
 
 	cached, ok := p.cpuUsageCache[stats.Attributes.Id]
 	if !ok || cached.usageNanoCores == nil {
-		klog.V(0).Infof("container %v not found in cache, returning nil", id)
+		klog.V(0).Infof("container %v not found in cache, returning nil", stats.Attributes.Id)
 		return nil
 	}
 	// return a copy of the usage
