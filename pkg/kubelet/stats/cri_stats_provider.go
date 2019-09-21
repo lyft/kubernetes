@@ -790,9 +790,6 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 				result = append(result, refs[i])
 			}
 		}
-		if !found {
-			result = append(result, refs[len(refs)-1])
-		}
 	}
 	return result
 }
