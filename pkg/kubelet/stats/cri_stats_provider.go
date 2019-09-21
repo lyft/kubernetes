@@ -688,7 +688,6 @@ func (p *criStatsProvider) getAndUpdateContainerUsageNanoCores(stats *runtimeapi
 		// Update cache with new value.
 		usageToUpdate := usageNanoCores
 		p.cpuUsageCache[id] = &cpuUsageRecord{stats: newStats, usageNanoCores: &usageToUpdate}
-		klog.V(0).Infof("cached value %v for container %v", p.cpuUsageCache, id)
 		return &usageNanoCores, nil
 	}()
 
@@ -780,18 +779,16 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 	result := make([]*runtimeapi.Container, 0)
 	for _, refs := range containerMap {
 		if len(refs) == 1 {
-			result = append(result, refs[0])
+			if refs[0].State != runtimeapi.ContainerState_CONTAINER_EXITED {
+				klog.V(0).Infof("appending container %v", refs[0])
+				result = append(result, refs[0])
+			}
 			continue
 		}
-		found := false
 		for i := 0; i < len(refs); i++ {
 			if refs[i].State == runtimeapi.ContainerState_CONTAINER_RUNNING {
-				found = true
 				result = append(result, refs[i])
 			}
-		}
-		if !found {
-			result = append(result, refs[len(refs)-1])
 		}
 	}
 	return result
