@@ -7668,7 +7668,7 @@
         },
         "fieldRef": {
           "$ref": "#/definitions/io.k8s.api.core.v1.ObjectFieldSelector",
-          "description": "Selects a field of the pod: supports metadata.name, metadata.namespace, metadata.labels, metadata.annotations, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP."
+          "description": "Selects a field of the pod: supports metadata.name, metadata.namespace, metadata.labels, metadata.annotations, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
         },
         "resourceFieldRef": {
           "$ref": "#/definitions/io.k8s.api.core.v1.ResourceFieldSelector",
