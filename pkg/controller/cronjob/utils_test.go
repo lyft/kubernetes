@@ -17,6 +17,7 @@ limitations under the License.
 package cronjob
 
 import (
+	"github.com/robfig/cron"
 	"reflect"
 	"sort"
 	"strings"
@@ -346,10 +347,10 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		if len(times) != 2 {
 			t.Errorf("expected 2 start times, got: %v", times)
 		} else {
-			if !times[0].Equal(T1) {
+			if !times[1].Equal(T1) {
 				t.Errorf("expected: %v, got: %v", T1, times[0])
 			}
-			if !times[1].Equal(T2) {
+			if !times[0].Equal(T2) {
 				t.Errorf("expected: %v, got: %v", T2, times[1])
 			}
 		}
@@ -360,8 +361,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		sj.Status.LastScheduleTime = &metav1.Time{Time: T1.Add(-1 * time.Hour)}
 		now := T2.Add(10 * 24 * time.Hour)
 		_, err := getRecentUnmetScheduleTimes(sj, now)
-		if err == nil {
-			t.Errorf("expected an error")
+		if err != nil {
+			t.Errorf("unexpected error")
 		}
 	}
 	{
@@ -375,6 +376,95 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		_, err := getRecentUnmetScheduleTimes(sj, now)
 		if err != nil {
 			t.Errorf("unexpected error")
+		}
+	}
+}
+
+func testParseSchedule(t *testing.T, schedule string) cron.SpecSchedule {
+	parsed, err := parseSchedule(schedule)
+	if err != nil {
+		t.Errorf("error parsing schedule %s in test setup: %v", schedule, err)
+	}
+	return parsed
+}
+
+func TestPreviousScheduleTime(t *testing.T) {
+	february29 := func() time.Time {
+		T1, err := time.Parse(time.RFC3339, "2012-02-29T23:30:00Z")
+		if err != nil {
+			panic(err)
+		}
+		return T1
+	}
+
+	april25 := func() time.Time {
+		T1, err := time.Parse(time.RFC3339, "2016-04-25T5:00:00Z")
+		if err != nil {
+			panic(err)
+		}
+		return T1
+	}
+
+	december5 := func() time.Time {
+		T1, err := time.Parse(time.RFC3339, "2015-12-05T23:59:00Z")
+		if err != nil {
+			panic(err)
+		}
+		return T1
+	}
+
+	cases := []struct{
+		schedule string
+		t time.Time
+		expect time.Time
+	} {
+		{
+			schedule: "* * * * *",
+			t: topOfTheHour(),
+			expect: topOfTheHour(),
+		},
+		{
+			schedule: "* * * * *",
+			t: topOfTheHour().Add(time.Second),
+			expect: topOfTheHour(),
+		},
+		{
+			schedule: "* * * * *",
+			t: topOfTheHour().Add(-time.Duration(1)),
+			expect: topOfTheHour().Add(-time.Minute),
+		},
+		{
+			schedule: "0 5 25 * *",
+			t:        topOfTheHour(),
+			expect:   april25(),
+		},
+		{
+			schedule: "0 */2 * * *",
+			t: topOfTheHour().Add(-time.Minute),
+			expect: topOfTheHour().Add(-2 * time.Hour),
+		},
+		{
+			schedule: "* * 5 12 *",
+			t: topOfTheHour(),
+			expect: december5(),
+		},
+		{
+			schedule: "30 * 29 2 *", // Leap year.
+			t: topOfTheHour().Add(-time.Hour * 24 * 100), // Before Feb 29th, 2016.
+			expect: february29(),
+		},
+		{
+			schedule: "* * 31 2 *", // February 31st doesn't exist.
+			t: topOfTheHour(),
+			expect: time.Time{},
+		},
+	}
+
+	for _, c := range cases {
+		schedule := testParseSchedule(t, c.schedule)
+		previous := PreviousScheduleTime(schedule, c.t)
+		if !previous.Equal(c.expect) {
+			t.Errorf("Didn't get expected previous runtime for %s at %v: expeted %v, got %v.", c.schedule, c.t, c.expect, previous)
 		}
 	}
 }

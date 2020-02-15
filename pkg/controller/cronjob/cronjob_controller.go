@@ -290,7 +290,7 @@ func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobCo
 		klog.V(4).Infof("Multiple unmet start times for %s so only starting last one", nameForLog)
 	}
 
-	scheduledTime := times[len(times)-1]
+	scheduledTime := times[0]
 	tooLate := false
 	if sj.Spec.StartingDeadlineSeconds != nil {
 		tooLate = scheduledTime.Add(time.Second * time.Duration(*sj.Spec.StartingDeadlineSeconds)).Before(now)

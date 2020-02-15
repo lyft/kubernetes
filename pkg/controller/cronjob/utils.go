@@ -17,6 +17,7 @@ limitations under the License.
 package cronjob
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -86,15 +87,32 @@ func groupJobsByParent(js []batchv1.Job) map[types.UID][]batchv1.Job {
 	return jobsBySj
 }
 
-// getRecentUnmetScheduleTimes gets a slice of times (from oldest to latest) that have passed when a Job should have started but did not.
-//
-// If there are too many (>100) unstarted times, just give up and return an empty slice.
+func parseSchedule(scheduleString string) (cron.SpecSchedule, error) {
+	tempSchedule, err := cron.ParseStandard(scheduleString)
+	if err != nil {
+		return cron.SpecSchedule{}, fmt.Errorf("unparseable schedule: %s : %s", scheduleString, err)
+	}
+
+	var schedule *cron.SpecSchedule
+	if t, ok := tempSchedule.(*cron.SpecSchedule); ok && t != nil {
+		schedule = t
+	} else {
+		return cron.SpecSchedule{}, errors.New("couldn't assert Schedule as SpecSchedule")
+	}
+
+	return *schedule, nil
+}
+
+// getRecentUnmetScheduleTimes gets a slice of times (from latest to oldest) that have passed when a Job should have started but did not.
+// TODO(vllry): (latest, missedTimes, err) would be a better return type, but its easier to patch this way.
+// A limited number of missed start times are returned.
 // If there were missed times prior to the last known start time, then those are not returned.
 func getRecentUnmetScheduleTimes(sj batchv1beta1.CronJob, now time.Time) ([]time.Time, error) {
 	starts := []time.Time{}
-	sched, err := cron.ParseStandard(sj.Spec.Schedule)
+
+	schedule, err := parseSchedule(sj.Spec.Schedule)
 	if err != nil {
-		return starts, fmt.Errorf("Unparseable schedule: %s : %s", sj.Spec.Schedule, err)
+		return starts, err
 	}
 
 	var earliestTime time.Time
@@ -121,31 +139,103 @@ func getRecentUnmetScheduleTimes(sj batchv1beta1.CronJob, now time.Time) ([]time
 		return []time.Time{}, nil
 	}
 
-	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
+	// Step backward from now, until earliestTime.
+	// Record all missed schedules between now and then.
+	for t := PreviousScheduleTime(schedule, now); t.After(earliestTime); t = PreviousScheduleTime(schedule, t) {
 		starts = append(starts, t)
-		// An object might miss several starts. For example, if
-		// controller gets wedged on friday at 5:01pm when everyone has
-		// gone home, and someone comes in on tuesday AM and discovers
-		// the problem and restarts the controller, then all the hourly
-		// jobs, more than 80 of them for one hourly scheduledJob, should
-		// all start running with no further intervention (if the scheduledJob
-		// allows concurrency and late starts).
-		//
-		// However, if there is a bug somewhere, or incorrect clock
-		// on controller's server or apiservers (for setting creationTimestamp)
-		// then there could be so many missed start times (it could be off
-		// by decades or more), that it would eat up all the CPU and memory
-		// of this controller. In that case, we want to not try to list
-		// all the missed start times.
-		//
-		// I've somewhat arbitrarily picked 100, as more than 80,
-		// but less than "lots".
-		if len(starts) > 100 {
-			// We can't get the most recent times so just return an empty slice
-			return []time.Time{}, fmt.Errorf("Too many missed start time (> 100). Set or decrease .spec.startingDeadlineSeconds or check clock skew.")
+		t = t.Add(-time.Second) // Make sure we don't return this same time again
+		// We only care about knowing 0, 1, or multiple missed start times.
+		if len(starts) > 1 {
+			return starts, nil
 		}
 	}
+
 	return starts, nil
+}
+
+// PreviousScheduleTime returns the most recent time this schedule is valid, before or at the given time.
+// If no time can be found to satisfy the schedule, return the zero time.
+func PreviousScheduleTime(schedule cron.SpecSchedule, t time.Time) time.Time {
+	// General approach:
+	// For Month, Day, Hour, Minute, Second:
+	// Check if the time value matches.  If yes, continue to the next field.
+	// If the field doesn't match the schedule, then decrement the field until it matches.
+	// While decrementing the field, a wrap-around brings it back to the beginning
+	// of the field list (since it is necessary to re-verify previous field
+	// values)
+
+	// Start at the earliest possible time (the upcoming second).
+	t = t.Add(-time.Duration(t.Nanosecond()) * time.Nanosecond)
+
+	// If no time is found within five years, return zero.
+	yearLimit := t.Year() - 5
+
+WRAP:
+
+	if t.Year() < yearLimit {
+		return time.Time{}
+	}
+
+	// Find the first applicable month.
+	// If it's this month, then do nothing.
+	for 1<<uint(t.Month())&schedule.Month == 0 {
+		// Step back into previous month.
+		t = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()).Add(-time.Second)
+
+		// Wrap around the year.
+		if t.Month() == time.December {
+			goto WRAP
+		}
+	}
+
+	// Now get a day in that month.
+	for !dayMatches(schedule, t) {
+		t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()).Add(-time.Second)
+		date := time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, t.Location()).AddDate(0, 0, -1)
+		if t.Day() == date.Day() {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint(t.Hour())&schedule.Hour == 0 {
+		t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location()).Add(-time.Second)
+
+		if t.Hour() == 23 {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint(t.Minute())&schedule.Minute == 0 {
+		t = t.Truncate(time.Minute).Add(-time.Second)
+
+		if t.Minute() == 59 {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint(t.Second())&schedule.Second == 0 {
+		t = t.Add(-time.Second)
+
+		if t.Second() == 59 {
+			goto WRAP
+		}
+	}
+
+	return t // If we've reached the end, we have a valid match (or none exist in range).
+}
+
+// dayMatches returns true if the schedule's day-of-week and day-of-month
+// restrictions are satisfied by the given time.
+func dayMatches(specSchedule cron.SpecSchedule, t time.Time) bool {
+	var (
+		domMatch bool = 1<<uint(t.Day())&specSchedule.Dom > 0
+		dowMatch bool = 1<<uint(t.Weekday())&specSchedule.Dow > 0
+		starBit uint64 = 1 << 63
+	)
+	if specSchedule.Dom&starBit > 0 || specSchedule.Dow&starBit > 0 {
+		return domMatch && dowMatch
+	}
+	return domMatch || dowMatch
 }
 
 // getJobFromTemplate makes a Job from a CronJob
