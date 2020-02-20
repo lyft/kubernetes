@@ -346,6 +346,27 @@ func TestModifySandboxNamespaceOptions(t *testing.T) {
 				NetworkMode: "default",
 			},
 		},
+		{
+			name: "Pod PID NamespaceOption (for sandbox is same as container ns option)",
+			nsOpt: &runtimeapi.NamespaceOption{
+				Pid: runtimeapi.NamespaceMode_POD,
+			},
+			expected: &dockercontainer.HostConfig{
+				PidMode:     "",
+				NetworkMode: "default",
+			},
+		},
+		{
+			name: "Target PID NamespaceOption (invalid for sandbox)",
+			nsOpt: &runtimeapi.NamespaceOption{
+				Pid:      runtimeapi.NamespaceMode_TARGET,
+				TargetId: "same-container",
+			},
+			expected: &dockercontainer.HostConfig{
+				PidMode:     "",
+				NetworkMode: "default",
+			},
+		},
 	}
 	for _, tc := range cases {
 		dockerCfg := &dockercontainer.HostConfig{}
@@ -394,6 +415,29 @@ func TestModifyContainerNamespaceOptions(t *testing.T) {
 				NetworkMode: dockercontainer.NetworkMode(sandboxNSMode),
 				IpcMode:     dockercontainer.IpcMode(sandboxNSMode),
 				PidMode:     namespaceModeHost,
+			},
+		},
+		{
+			name: "Pod PID NamespaceOption",
+			nsOpt: &runtimeapi.NamespaceOption{
+				Pid: runtimeapi.NamespaceMode_POD,
+			},
+			expected: &dockercontainer.HostConfig{
+				NetworkMode: dockercontainer.NetworkMode(sandboxNSMode),
+				IpcMode:     dockercontainer.IpcMode(sandboxNSMode),
+				PidMode:     dockercontainer.PidMode(sandboxNSMode),
+			},
+		},
+		{
+			name: "Target PID NamespaceOption",
+			nsOpt: &runtimeapi.NamespaceOption{
+				Pid:      runtimeapi.NamespaceMode_TARGET,
+				TargetId: "some-container",
+			},
+			expected: &dockercontainer.HostConfig{
+				NetworkMode: dockercontainer.NetworkMode(sandboxNSMode),
+				IpcMode:     dockercontainer.IpcMode(sandboxNSMode),
+				PidMode:     dockercontainer.PidMode("container:some-container"),
 			},
 		},
 	}

@@ -124,18 +124,27 @@ const (
 	// For example, a container with a PID namespace of NODE expects to view
 	// all of the processes on the host running the kubelet.
 	NamespaceMode_NODE NamespaceMode = 2
+	// TARGET targets the namespace of another container. When this is specified,
+	// a target_id must be specified in NamespaceOption and refer to a container
+	// previously created with NamespaceMode CONTAINER. This containers namespace
+	// will be made to match that of container target_id.
+	// For example, a container with a PID namespace of TARGET expects to view
+	// all of the processes that container target_id can view.
+	NamespaceMode_TARGET NamespaceMode = 3
 )
 
 var NamespaceMode_name = map[int32]string{
 	0: "POD",
 	1: "CONTAINER",
 	2: "NODE",
+	3: "TARGET",
 }
 
 var NamespaceMode_value = map[string]int32{
 	"POD":       0,
 	"CONTAINER": 1,
 	"NODE":      2,
+	"TARGET":    3,
 }
 
 func (x NamespaceMode) String() string {
@@ -557,14 +566,18 @@ type NamespaceOption struct {
 	// PID namespace for this container/sandbox.
 	// Note: The CRI default is POD, but the v1.PodSpec default is CONTAINER.
 	// The kubelet's runtime manager will set this to CONTAINER explicitly for v1 pods.
-	// Namespaces currently set by the kubelet: POD, CONTAINER, NODE
+	// Namespaces currently set by the kubelet: POD, CONTAINER, NODE, TARGET
 	Pid NamespaceMode `protobuf:"varint,2,opt,name=pid,proto3,enum=runtime.v1alpha2.NamespaceMode" json:"pid,omitempty"`
 	// IPC namespace for this container/sandbox.
 	// Note: There is currently no way to set CONTAINER scoped IPC in the Kubernetes API.
 	// Namespaces currently set by the kubelet: POD, NODE
-	Ipc                  NamespaceMode `protobuf:"varint,3,opt,name=ipc,proto3,enum=runtime.v1alpha2.NamespaceMode" json:"ipc,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
-	XXX_sizecache        int32         `json:"-"`
+	Ipc NamespaceMode `protobuf:"varint,3,opt,name=ipc,proto3,enum=runtime.v1alpha2.NamespaceMode" json:"ipc,omitempty"`
+	// Target Container ID for NamespaceMode of TARGET. This container must have been
+	// previously created in the same pod. It is not possible to specify different targets
+	// for each namespace.
+	TargetId             string   `protobuf:"bytes,4,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *NamespaceOption) Reset()      { *m = NamespaceOption{} }
@@ -618,6 +631,13 @@ func (m *NamespaceOption) GetIpc() NamespaceMode {
 		return m.Ipc
 	}
 	return NamespaceMode_POD
+}
+
+func (m *NamespaceOption) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
 }
 
 // Int64Value is the wrapper of int64.
@@ -8567,6 +8587,13 @@ func (m *NamespaceOption) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintApi(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.Ipc != 0 {
 		i = encodeVarintApi(dAtA, i, uint64(m.Ipc))
 		i--
@@ -13433,6 +13460,10 @@ func (m *NamespaceOption) Size() (n int) {
 	if m.Ipc != 0 {
 		n += 1 + sovApi(uint64(m.Ipc))
 	}
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
 	return n
 }
 
@@ -15472,6 +15503,7 @@ func (this *NamespaceOption) String() string {
 		`Network:` + fmt.Sprintf("%v", this.Network) + `,`,
 		`Pid:` + fmt.Sprintf("%v", this.Pid) + `,`,
 		`Ipc:` + fmt.Sprintf("%v", this.Ipc) + `,`,
+		`TargetId:` + fmt.Sprintf("%v", this.TargetId) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -17706,6 +17738,38 @@ func (m *NamespaceOption) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthApi
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipApi(dAtA[iNdEx:])
