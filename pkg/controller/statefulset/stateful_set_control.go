@@ -19,12 +19,14 @@ package statefulset
 import (
 	"math"
 	"sort"
+	"strconv"
 
 	"k8s.io/klog"
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/controller/history"
 )
@@ -366,6 +368,18 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 
 	monotonic := !allowsBurst(set)
 
+	maxUnavailable := 0
+	maxUnavailableStr := set.Annotations["statefulset.lyft.net/maxUnvailable"]
+	if maxUnavailableStr != "" {
+		maxUnavailable, err := intstr.GetValueFromIntOrPercent(intstr.Parse(maxUnavailableStr), replicaCount, false)
+		if err != nil {
+			return &status, err
+		}
+	}
+
+	// get the current assumed unready count of replicas.
+	unreadyCount := replicaCount - int(status.ReadyReplicas)
+
 	// Examine each replica with respect to its ordinal
 	for i := range replicas {
 		// delete and recreate failed pods
@@ -458,7 +472,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 				set.Name,
 				condemned[target].Name)
 			// block if we are in monotonic mode
-			if monotonic {
+			if monotonic && unreadyCount == maxUnavailable {
 				return &status, nil
 			}
 			continue
@@ -501,8 +515,18 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 	if set.Spec.UpdateStrategy.RollingUpdate != nil {
 		updateMin = int(*set.Spec.UpdateStrategy.RollingUpdate.Partition)
 	}
-	// we terminate the Pod with the largest ordinal that does not match the update revision.
+
+	// we terminate up to maxUnavailable Pods with the largest ordinal
+	// that does not match the update revision.
 	for target := len(replicas) - 1; target >= updateMin; target-- {
+		if unreadyCount == maxUnavailable {
+			// we've updated as many as we can, let's bail now.
+			klog.V(2).Infof("StatefulSet %s/%s unready count is at maximum (%d); stopping deletions",
+				set.Namespace,
+				set.Name,
+				unreadyCount)
+			break
+		}
 
 		// delete the Pod if it is not already terminating and does not match the update revision.
 		if getPodRevision(replicas[target]) != updateRevision.Name && !isTerminating(replicas[target]) {
@@ -510,9 +534,12 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 				set.Namespace,
 				set.Name,
 				replicas[target].Name)
-			err := ssc.podControl.DeleteStatefulPod(set, replicas[target])
+			if err := ssc.podControl.DeleteStatefulPod(set, replicas[target]); err != nil {
+				return &status, err
+			}
 			status.CurrentReplicas--
-			return &status, err
+			unreadyCount += 1
+			continue
 		}
 
 		// wait for unhealthy Pods on update
@@ -522,9 +549,9 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 				set.Namespace,
 				set.Name,
 				replicas[target].Name)
-			return &status, nil
+			unreadyCount += 1
+			continue
 		}
-
 	}
 	return &status, nil
 }
