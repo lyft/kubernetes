@@ -368,7 +368,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 
 	monotonic := !allowsBurst(set)
 
-	maxUnavailable := 0
+	maxUnavailable := 1
 	maxUnavailableStr := set.Annotations["statefulset.lyft.net/maxUnvailable"]
 	if maxUnavailableStr != "" {
 		maxUnavailable, err := intstr.GetValueFromIntOrPercent(intstr.Parse(maxUnavailableStr), replicaCount, false)
