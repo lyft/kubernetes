@@ -35,11 +35,27 @@ var schedulingDecisionSkip = prometheus.NewCounterVec(
 	},
 	[]string{namespaceKey, cronNameKey, skipReasonKey})
 
+var jobSucceeded = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Subsystem: cronjobSubsystem,
+		Name:      "job_succeeded",
+		Help:      "Counter that increments when the cronjob controller detects a child Job has completed with success",
+	}, []string{namespaceKey, cronNameKey})
+
+var jobFailed = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Subsystem: cronjobSubsystem,
+		Name:      "job_failed",
+		Help:      "Counter that increments when the cronjob controller detects a child Job has completed with failure",
+	}, []string{namespaceKey, cronNameKey})
+
 var registerOnce sync.Once
 
 func registerMetrics() {
 	registerOnce.Do(func() {
 		prometheus.MustRegister(schedulingDecisionInvoke)
 		prometheus.MustRegister(schedulingDecisionSkip)
+		prometheus.MustRegister(jobSucceeded)
+		prometheus.MustRegister(jobFailed)
 	})
 }
