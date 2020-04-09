@@ -245,11 +245,6 @@ func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobCo
 		} else if found && IsJobFinished(&j) {
 			deleteFromActiveList(sj, j.ObjectMeta.UID)
 			// TODO: event to call out failure vs success.
-			if j.Status.Succeeded >= *j.Spec.BackoffLimit {
-				jobSucceeded.WithLabelValues(sj.Namespace, sj.Name).Inc()
-			} else {
-				jobFailed.WithLabelValues(sj.Namespace, sj.Name).Inc()
-			}
 			recorder.Eventf(sj, v1.EventTypeNormal, "SawCompletedJob", "Saw completed job: %v", j.Name)
 		}
 	}
