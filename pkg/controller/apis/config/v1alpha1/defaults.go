@@ -119,6 +119,12 @@ func SetDefaults_CSRSigningControllerConfiguration(obj *kubectrlmgrconfigv1alpha
 	}
 }
 
+func SetDefaults_CronJobControllerConfiguration(obj *kubectrlmgrconfigv1alpha1.CronJobControllerConfiguration) {
+	zero := metav1.Duration{}
+	if obj.CronJobControllerSyncPeriod == zero {
+		obj.CronJobControllerSyncPeriod = metav1.Duration{Duration: 10 * time.Second}
+	}
+}
 func SetDefaults_DeploymentControllerConfiguration(obj *kubectrlmgrconfigv1alpha1.DeploymentControllerConfiguration) {
 	zero := metav1.Duration{}
 	if obj.ConcurrentDeploymentSyncs == 0 {

@@ -44,6 +44,7 @@ func TestAddFlags(t *testing.T) {
 		"--address=192.168.4.10",
 		"--allocate-node-cidrs=true",
 		"--attach-detach-reconcile-sync-period=30s",
+		"--cronjob-controller-sync-period=10s",
 		"--cidr-allocator-type=CloudAllocator",
 		"--cloud-config=/cloud-config",
 		"--cloud-provider=gce",
@@ -184,6 +185,11 @@ func TestAddFlags(t *testing.T) {
 				ClusterSigningCertFile: "/cluster-signing-cert",
 				ClusterSigningKeyFile:  "/cluster-signing-key",
 				ClusterSigningDuration: metav1.Duration{Duration: 10 * time.Hour},
+			},
+		},
+		CronJobController: &CronJobControllerOptions{
+			&kubectrlmgrconfig.CronJobControllerConfiguration{
+				CronJobControllerSyncPeriod: metav1.Duration{Duration: 10 * time.Second},
 			},
 		},
 		DaemonSetController: &DaemonSetControllerOptions{

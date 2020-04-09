@@ -39,6 +39,7 @@ func SetObjectDefaults_KubeControllerManagerConfiguration(in *v1alpha1.KubeContr
 	SetDefaults_KubeControllerManagerConfiguration(in)
 	SetDefaults_KubeCloudSharedConfiguration(&in.KubeCloudShared)
 	SetDefaults_CSRSigningControllerConfiguration(&in.CSRSigningController)
+	SetDefaults_CronJobControllerConfiguration(&in.CronJobController)
 	SetDefaults_DaemonSetControllerConfiguration(&in.DaemonSetController)
 	SetDefaults_DeploymentControllerConfiguration(&in.DeploymentController)
 	SetDefaults_EndpointControllerConfiguration(&in.EndpointController)
