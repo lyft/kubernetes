@@ -17,11 +17,14 @@ limitations under the License.
 package core
 
 import (
+	"encoding/json"
+	"github.com/golang/protobuf/jsonpb"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"strings"
 )
 
 const (
@@ -4085,6 +4088,28 @@ const (
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[ResourceName]resource.Quantity
 
+func (r *ResourceList) UnmarshalJSONPB(u *jsonpb.Unmarshaler, value []byte) error {
+	var m map[string]string
+	err := json.Unmarshal(value, &m)
+	if err != nil {
+		return err
+	}
+
+	resourceList := make(ResourceList)
+	for resourceName, quantity := range m {
+		quantityPB := resource.Quantity{}
+		err := u.Unmarshal(strings.NewReader(quantity), &quantityPB)
+		if err != nil {
+			return err
+		}
+		resourceList[ResourceName(resourceName)] = quantityPB
+	}
+	*r = resourceList
+	return nil
+}
+
+// +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Node is a worker node in Kubernetes
