@@ -25,7 +25,6 @@ import (
 	"sync"
 	"time"
 
-	cadvisorfs "github.com/google/cadvisor/fs"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -448,12 +447,13 @@ func (p *criStatsProvider) getFsInfo(fsID *runtimeapi.FilesystemIdentifier) *cad
 	mountpoint := fsID.GetMountpoint()
 	fsInfo, err := p.cadvisor.GetDirFsInfo(mountpoint)
 	if err != nil {
-		msg := "Failed to get the info of the filesystem with mountpoint"
-		if err == cadvisorfs.ErrNoSuchDevice {
-			klog.V(2).InfoS(msg, "mountpoint", mountpoint, "err", err)
-		} else {
-			klog.ErrorS(err, msg, "mountpoint", mountpoint)
-		}
+		// comment out per upstream bug https://github.com/kubernetes/kubernetes/issues/94825
+		// msg := fmt.Sprintf("Failed to get the info of the filesystem with mountpoint %q: %v.", mountpoint, err)
+		// if err == cadvisorfs.ErrNoSuchDevice {
+		// 	klog.V(2).Info(msg)
+		// } else {
+		// 	klog.Error(msg)
+		// }
 		return nil
 	}
 	return &fsInfo
