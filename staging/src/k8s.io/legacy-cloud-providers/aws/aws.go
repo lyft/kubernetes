@@ -2436,8 +2436,8 @@ func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, er
 
 	case VolumeTypeGP3:
 		createType = volumeOptions.VolumeType
-		iops = volumeOptions.IOPS
-		throughput = volumeOptions.Throughput
+		iops = int64(volumeOptions.IOPS)
+		throughput = int64(volumeOptions.Throughput)
 
 	case VolumeTypeIO1:
 		// See http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateVolume.html
