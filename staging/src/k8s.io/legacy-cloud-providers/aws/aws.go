@@ -415,6 +415,7 @@ const (
 	VolumeTypeSC1 = "sc1"
 	// Throughput Optimized HDD
 	VolumeTypeST1 = "st1"
+	VolumeTypeGP3 = "gp3"
 )
 
 // AWS provisioning limits.
@@ -437,6 +438,9 @@ type VolumeOptions struct {
 	// fully qualified resource name to the key to use for encryption.
 	// example: arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef
 	KmsKeyID string
+	// options for gp3
+	IOPS       int
+	Throughput int
 }
 
 // Volumes is an interface for managing cloud-provisioned volumes
@@ -2425,9 +2429,15 @@ func (c *Cloud) DetachDisk(diskName KubernetesVolumeID, nodeName types.NodeName)
 func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, error) {
 	var createType string
 	var iops int64
+	var throughput int64
 	switch volumeOptions.VolumeType {
 	case VolumeTypeGP2, VolumeTypeSC1, VolumeTypeST1:
 		createType = volumeOptions.VolumeType
+
+	case VolumeTypeGP3:
+		createType = volumeOptions.VolumeType
+		iops = volumeOptions.IOPS
+		throughput = volumeOptions.Throughput
 
 	case VolumeTypeIO1:
 		// See http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateVolume.html
@@ -2463,6 +2473,9 @@ func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, er
 	}
 	if iops > 0 {
 		request.Iops = aws.Int64(iops)
+	}
+	if throughput > 0 {
+		request.Throughput = aws.Int64(throughput)
 	}
 
 	tags := volumeOptions.Tags
