@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	cadvisorfs "github.com/google/cadvisor/fs"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -368,12 +367,13 @@ func (p *criStatsProvider) getFsInfo(fsID *runtimeapi.FilesystemIdentifier) *cad
 	mountpoint := fsID.GetMountpoint()
 	fsInfo, err := p.cadvisor.GetDirFsInfo(mountpoint)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to get the info of the filesystem with mountpoint %q: %v.", mountpoint, err)
-		if err == cadvisorfs.ErrNoSuchDevice {
-			klog.V(2).Info(msg)
-		} else {
-			klog.Error(msg)
-		}
+		// comment out per upstream bug https://github.com/kubernetes/kubernetes/issues/94825
+		// msg := fmt.Sprintf("Failed to get the info of the filesystem with mountpoint %q: %v.", mountpoint, err)
+		// if err == cadvisorfs.ErrNoSuchDevice {
+		// 	klog.V(2).Info(msg)
+		// } else {
+		// 	klog.Error(msg)
+		// }
 		return nil
 	}
 	return &fsInfo
@@ -734,9 +734,8 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 	return result
 }
 
-// removeTerminatedContainers returns containers with terminated ones.
-// It only removes a terminated container when there is a running instance
-// of the container.
+// removeTerminatedContainers removes all terminated containers since they should
+// not be used for usage calculations.
 func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeapi.Container {
 	containerMap := make(map[containerID][]*runtimeapi.Container)
 	// Sort order by create time
@@ -753,19 +752,10 @@ func removeTerminatedContainers(containers []*runtimeapi.Container) []*runtimeap
 
 	result := make([]*runtimeapi.Container, 0)
 	for _, refs := range containerMap {
-		if len(refs) == 1 {
-			result = append(result, refs[0])
-			continue
-		}
-		found := false
 		for i := 0; i < len(refs); i++ {
 			if refs[i].State == runtimeapi.ContainerState_CONTAINER_RUNNING {
-				found = true
 				result = append(result, refs[i])
 			}
-		}
-		if !found {
-			result = append(result, refs[len(refs)-1])
 		}
 	}
 	return result
