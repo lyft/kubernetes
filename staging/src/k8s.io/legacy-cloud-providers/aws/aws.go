@@ -1,3 +1,4 @@
+//go:build !providerless
 // +build !providerless
 
 /*
@@ -174,7 +175,9 @@ const ServiceAnnotationLoadBalancerSSLNegotiationPolicy = "service.beta.kubernet
 // ServiceAnnotationLoadBalancerBEProtocol is the annotation used on the service
 // to specify the protocol spoken by the backend (pod) behind a listener.
 // If `http` (default) or `https`, an HTTPS listener that terminates the
-//  connection and parses headers is created.
+//
+//	connection and parses headers is created.
+//
 // If set to `ssl` or `tcp`, a "raw" SSL listener is used.
 // If set to `http` and `aws-load-balancer-ssl-cert` is not used then
 // a HTTP listener is used.
@@ -237,9 +240,9 @@ const ServiceAnnotationLoadBalancerTargetNodeLabels = "service.beta.kubernetes.i
 // subnetID or subnetName from different AZs
 // By default, the controller will auto-discover the subnets. If there are multiple subnets per AZ, auto-discovery
 // will break the tie in the following order -
-//   1. prefer the subnet with the correct role tag. kubernetes.io/role/elb for public and kubernetes.io/role/internal-elb for private access
-//   2. prefer the subnet with the cluster tag kubernetes.io/cluster/<Cluster Name>
-//   3. prefer the subnet that is first in lexicographic order
+//  1. prefer the subnet with the correct role tag. kubernetes.io/role/elb for public and kubernetes.io/role/internal-elb for private access
+//  2. prefer the subnet with the cluster tag kubernetes.io/cluster/<Cluster Name>
+//  3. prefer the subnet that is first in lexicographic order
 const ServiceAnnotationLoadBalancerSubnets = "service.beta.kubernetes.io/aws-load-balancer-subnets"
 
 // Event key when a volume is stuck on attaching state when being attached to a volume
@@ -454,6 +457,7 @@ const (
 	VolumeTypeSC1 = "sc1"
 	// Throughput Optimized HDD
 	VolumeTypeST1 = "st1"
+	VolumeTypeGP3 = "gp3"
 )
 
 // AWS provisioning limits.
@@ -476,6 +480,9 @@ type VolumeOptions struct {
 	// fully qualified resource name to the key to use for encryption.
 	// example: arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef
 	KmsKeyID string
+	// options for gp3
+	IOPS       int
+	Throughput int
 }
 
 // Volumes is an interface for managing cloud-provisioned volumes
@@ -2546,9 +2553,15 @@ func (c *Cloud) DetachDisk(diskName KubernetesVolumeID, nodeName types.NodeName)
 func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, error) {
 	var createType string
 	var iops int64
+	var throughput int64
 	switch volumeOptions.VolumeType {
 	case VolumeTypeGP2, VolumeTypeSC1, VolumeTypeST1:
 		createType = volumeOptions.VolumeType
+
+	case VolumeTypeGP3:
+		createType = volumeOptions.VolumeType
+		iops = int64(volumeOptions.IOPS)
+		throughput = int64(volumeOptions.Throughput)
 
 	case VolumeTypeIO1:
 		// See http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateVolume.html
@@ -2584,6 +2597,9 @@ func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, er
 	}
 	if iops > 0 {
 		request.Iops = aws.Int64(iops)
+	}
+	if throughput > 0 {
+		request.Throughput = aws.Int64(throughput)
 	}
 
 	tags := volumeOptions.Tags
@@ -3750,8 +3766,8 @@ func (c *Cloud) buildELBSecurityGroupList(serviceName types.NamespacedName, load
 
 // sortELBSecurityGroupList returns a list of sorted securityGroupIDs based on the original order
 // from buildELBSecurityGroupList. The logic is:
-//  * securityGroups specified by ServiceAnnotationLoadBalancerSecurityGroups appears first in order
-//  * securityGroups specified by ServiceAnnotationLoadBalancerExtraSecurityGroups appears last in order
+//   - securityGroups specified by ServiceAnnotationLoadBalancerSecurityGroups appears first in order
+//   - securityGroups specified by ServiceAnnotationLoadBalancerExtraSecurityGroups appears last in order
 func (c *Cloud) sortELBSecurityGroupList(securityGroupIDs []string, annotations map[string]string) {
 	annotatedSGList := getSGListFromAnnotation(annotations[ServiceAnnotationLoadBalancerSecurityGroups])
 	annotatedExtraSGList := getSGListFromAnnotation(annotations[ServiceAnnotationLoadBalancerExtraSecurityGroups])
