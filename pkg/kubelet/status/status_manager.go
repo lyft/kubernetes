@@ -746,7 +746,7 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 						klog.Infof("Pod %s: %s: sidecar is ready", format.Pod(pod), container.Name)
 					}
 				} else {
-					if (status.State.Waiting == nil && status.State.Running == nil && status.State.Terminated == nil) ||
+					if (status.State == v1.ContainerState{}) || // For zero value, the default state is ContainerStateWaiting.
 						status.State.Waiting != nil {
 						// check if non-sidecars have started
 						klog.Infof("Pod: %s: %s: non-sidecar waiting", format.Pod(pod), container.Name)
