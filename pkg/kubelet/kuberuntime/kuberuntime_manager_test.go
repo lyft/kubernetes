@@ -2158,7 +2158,30 @@ func TestComputePodActionsWithSidecar(t *testing.T) {
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 			},
 		},
-		"Don't start non-sidecars until sidecars are ready, no known previous container state": {
+		"Don't start non-sidecars until sidecars are ready, no known previous container state for all non-sidecar": {
+			mutatePodFn: func(pod *v1.Pod) {
+				pod.Status.ContainerStatuses = []v1.ContainerStatus{
+					{
+						Name:  "foo2",
+						Ready: false,
+					},
+				}
+			},
+			mutateStatusFn: func(status *kubecontainer.PodStatus) {
+				for i := range status.ContainerStatuses {
+					if i == 1 {
+						continue
+					}
+					status.ContainerStatuses[i].State = ""
+				}
+			},
+			actions: podActions{
+				SandboxID:         baseStatus.SandboxStatuses[0].Id,
+				ContainersToStart: []int{},
+				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
+			},
+		},
+		"Don't start non-sidecars until sidecars are ready, no known previous container state for one non-sidecar": {
 			mutatePodFn: func(pod *v1.Pod) {
 				pod.Status.ContainerStatuses = []v1.ContainerStatus{
 					{
