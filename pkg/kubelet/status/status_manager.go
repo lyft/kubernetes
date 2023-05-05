@@ -1096,17 +1096,23 @@ type SidecarsStatus struct {
 	ContainersWaiting bool
 }
 
+// NotEnoughInformationSidecarStatus should be used when we don't have all the information
+// to get the complete status.
+// This state prevents application container from making progress
+// but sidecars should always be allowed to progress.
+var NotEnoughInformationSidecarStatus = SidecarsStatus{SidecarsPresent: true, SidecarsReady: false, ContainersWaiting: true}
+
 // GetSidecarsStatus returns the SidecarsStatus for the given pod
 func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 	if pod == nil {
 		klog.Infof("Pod was nil, returning empty sidecar status")
-		return SidecarsStatus{}
+		return NotEnoughInformationSidecarStatus
 	}
 	if pod.Spec.Containers == nil || pod.Status.ContainerStatuses == nil {
 		klog.Infof("Pod Containers or Container status was nil, returning empty sidecar status")
-		return SidecarsStatus{}
+		return NotEnoughInformationSidecarStatus
 	}
-	sidecarsStatus := SidecarsStatus{SidecarsPresent: false, SidecarsReady: true, ContainersWaiting: false}
+	sidecarsStatus := SidecarsStatus{SidecarsPresent: false, SidecarsReady: true, ContainersWaiting: true}
 	for _, container := range pod.Spec.Containers {
 		for _, status := range pod.Status.ContainerStatuses {
 			if status.Name == container.Name {
@@ -1121,9 +1127,12 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 				} else {
 					if (status.State == v1.ContainerState{}) || // For zero value, the default state is ContainerStateWaiting.
 						status.State.Waiting != nil {
-						// check if non-sidecars have started
+						// non-sidecar is waiting
 						klog.Infof("Pod: %s: %s: non-sidecar waiting", format.Pod(pod), container.Name)
-						sidecarsStatus.ContainersWaiting = true
+					} else {
+						// non-sidecar has started running
+						klog.Infof("Pod: %s: %s: non-sidecar started", format.Pod(pod), container.Name)
+						sidecarsStatus.ContainersWaiting = false
 					}
 				}
 			}
