@@ -735,10 +735,21 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 		klog.Infof("Pod was nil, returning empty sidecar status")
 		return NotEnoughInformationSidecarStatus
 	}
-	if pod.Spec.Containers == nil || pod.Status.ContainerStatuses == nil {
-		klog.Infof("Pod Containers or Container status was nil, returning empty sidecar status")
+	if pod.Spec.Containers == nil {
+		klog.Infof("Pod Containers  was nil, returning not enough information sidecar status")
 		return NotEnoughInformationSidecarStatus
 	}
+	if pod.Status.ContainerStatuses == nil {
+		for _, container := range pod.Spec.Containers {
+			if isSidecar(pod, container.Name) {
+				klog.Infof("Pod Containers Status was nil, sidecar is present: returning not enough information status")
+				return NotEnoughInformationSidecarStatus
+			}
+		}
+		klog.Infof("Pod Containers Status was nil, no sidecar present: returning empty sidecar status")
+		return SidecarsStatus{}
+	}
+
 	sidecarsStatus := SidecarsStatus{SidecarsPresent: false, SidecarsReady: true, ContainersWaiting: true}
 	for _, container := range pod.Spec.Containers {
 		for _, status := range pod.Status.ContainerStatuses {
@@ -766,4 +777,8 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 		}
 	}
 	return sidecarsStatus
+}
+
+func isSidecar(pod *v1.Pod, containerName string) bool {
+	return pod.Annotations[fmt.Sprintf("sidecars.lyft.net/container-lifecycle-%s", containerName)] == "Sidecar"
 }
