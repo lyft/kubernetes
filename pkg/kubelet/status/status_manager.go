@@ -909,13 +909,13 @@ func GetSidecarsStatus(pod *v1.Pod) SidecarsStatus {
 		return NotEnoughInformationSidecarStatus
 	}
 	if pod.Spec.Containers == nil {
-		klog.Infof("Pod Containers  was nil, returning empty sidecar status")
+		klog.Infof("Pod Containers  was nil, returning not enough information sidecar status")
 		return NotEnoughInformationSidecarStatus
 	}
 	if pod.Status.ContainerStatuses == nil {
 		for _, container := range pod.Spec.Containers {
 			if isSidecar(pod, container.Name) {
-				klog.Infof("Pod Containers Status was nil, sidecar is present: we must wait")
+				klog.Infof("Pod Containers Status was nil, sidecar is present: returning not enough information status")
 				return NotEnoughInformationSidecarStatus
 			}
 		}
