@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"runtime"
 	"strconv"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
@@ -47,8 +48,9 @@ const (
 	// xref: https://github.com/kubernetes/kubernetes/pull/99576/commits/42fb66073214eed6fe43fa8b1586f396e30e73e3#r635392090
 	// Currently, ContainerD on Windows does not yet fully support HostProcess containers
 	// but will pass annotations to hcsshim which does have support.
-	windowsHostProcessContainer = "microsoft.com/hostprocess-container"
-	containerSidecarLabel       = "com.lyft.sidecars.container-lifecycle"
+	windowsHostProcessContainer     = "microsoft.com/hostprocess-container"
+	containerSidecarLabel           = "com.lyft.sidecars.container-lifecycle"
+	sidecarMinGraceperoidAnnotation = "sidecars.lyft.net/sidecar-min-graceperoid"
 )
 
 type labeledPodSandboxInfo struct {
@@ -325,4 +327,23 @@ func getJSONObjectFromLabel(labels map[string]string, label string, value interf
 	}
 	// If the label is not found, return not found.
 	return false, nil
+}
+
+// getSidecarMinGraceperoid returns if set the minimum graceperoid for sidecars
+// in the event of a parse failure, or the annotation is not present,
+// return a default value.
+func getSidecarMinGraceperoid(annotations map[string]string) time.Duration {
+	const defaultGraceperoid = 10 * time.Second
+
+	if min, ok := annotations[sidecarMinGraceperoidAnnotation]; ok {
+		minGraceperoid, err := strconv.Atoi(min)
+		if err != nil {
+			// if for whatever reason this is not parseable
+			// return a default value
+			return defaultGraceperoid
+		}
+		return time.Duration(minGraceperoid) * time.Second
+	}
+
+	return defaultGraceperoid
 }
