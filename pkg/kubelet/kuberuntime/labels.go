@@ -330,8 +330,7 @@ func getJSONObjectFromLabel(labels map[string]string, label string, value interf
 }
 
 // getSidecarMinGraceperoid returns if set the minimum graceperoid for sidecars
-// in the event of a parse failure, or the annotation is not present,
-// return a default value.
+// In the event of a parse failure, or the annotation is not present, return a default value.
 func getSidecarMinGraceperoid(annotations map[string]string) time.Duration {
 	const defaultGraceperoid = 10 * time.Second
 

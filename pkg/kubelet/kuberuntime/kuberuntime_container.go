@@ -783,7 +783,7 @@ func (m *kubeGenericRuntimeManager) killContainersWithSyncResult(pod *v1.Pod, ru
 	nonSidecarsWg.Wait()
 
 	// If non-sidecar containers eat up all of the gracePerioidDuration
-	// We still want to add a bit of time to give sidecars some chance to gracefully shutdown
+	// We still want to add a bit of time to give sidecars a chance to gracefully shutdown
 	// The default value is 10 seconds
 	// To orveride the default specify the annotation with a duration
 	// sidecars.lyft.net/sidecar-min-graceperoid=[time in seconds]

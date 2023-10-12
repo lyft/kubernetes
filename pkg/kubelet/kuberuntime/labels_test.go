@@ -19,8 +19,9 @@ package kuberuntime
 import (
 	"reflect"
 	"testing"
+	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -64,7 +65,7 @@ func TestContainerLabels(t *testing.T) {
 		},
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		description string
 		expected    *labeledContainerInfo
 	}{
@@ -235,5 +236,35 @@ func TestPodAnnotations(t *testing.T) {
 	podSandboxInfo := getPodSandboxInfoFromAnnotations(annotations)
 	if !reflect.DeepEqual(podSandboxInfo, expected) {
 		t.Errorf("expected %v, got %v", expected, podSandboxInfo)
+	}
+}
+
+func TestGetSidecarMinGraceperoid(t *testing.T) {
+	tests := []struct {
+		id          string
+		annotations map[string]string
+		expect      time.Duration
+	}{
+		{
+			id:          "default value",
+			annotations: map[string]string{},
+			expect:      time.Duration(10) * time.Second,
+		},
+		{
+			id: "overrided",
+			annotations: map[string]string{
+				sidecarMinGraceperoidAnnotation: "100",
+			},
+			expect: time.Duration(100) * time.Second,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.id, func(t *testing.T) {
+			actual := getSidecarMinGraceperoid(test.annotations)
+			if test.expect != actual {
+				t.Errorf("expected: %v, got %v", test.expect, actual)
+			}
+		})
 	}
 }
