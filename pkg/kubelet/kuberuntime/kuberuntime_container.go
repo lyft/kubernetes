@@ -734,6 +734,10 @@ func (m *kubeGenericRuntimeManager) killContainer(ctx context.Context, pod *v1.P
 		pod, containerSpec = restoredPod, restoredContainer
 	}
 
+	// Be aware Lyft's patch always sets the grace period to minimumGracePeriodInSeconds (2 seconds) so
+	// Tests that rely on the grace period being set to 0 will fail. These include the following tests:
+	// - TestLifeCycleHook/PreStop-NoTimeToRun
+	// - TestLifeCycleHookForRestartableInitContainer/PreStop-NoTimeToRun
 	// From this point, pod and container must be non-nil.
 	gracePeriod := setTerminationGracePeriod(pod, containerSpec, containerName, containerID, reason)
 
