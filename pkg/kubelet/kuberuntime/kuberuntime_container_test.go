@@ -401,7 +401,8 @@ func testLifeCycleHook(t *testing.T, testPod *v1.Pod, testContainer *v1.Containe
 	// Configured and works as expected
 	t.Run("PreStop-CMDExec", func(t *testing.T) {
 		ctx := context.Background()
-		testPod.Spec.Containers[0].Lifecycle = cmdLifeCycle
+		// testPod.Spec.Containers[0].Lifecycle = cmdLifeCycle
+		testContainer.Lifecycle = cmdLifeCycle
 		m.killContainer(ctx, testPod, cID, "foo", "testKill", "", time.Duration(gracePeriod)*time.Second)
 		if fakeRunner.Cmd[0] != cmdLifeCycle.PreStop.Exec.Command[0] {
 			t.Errorf("CMD Prestop hook was not invoked")
