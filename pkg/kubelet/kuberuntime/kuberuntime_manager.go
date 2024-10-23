@@ -1286,10 +1286,6 @@ func (m *kubeGenericRuntimeManager) SyncPod(ctx context.Context, pod *v1.Pod, po
 			container := &pod.Spec.InitContainers[idx]
 			// Start the next init container.
 			if err := start(ctx, "init container", metrics.InitContainer, containerStartSpec(container)); err != nil {
-				if types.IsRestartableInitContainer(container) {
-					klog.V(4).InfoS("Failed to start the restartable init container for the pod, skipping", "initContainerName", container.Name, "pod", klog.KObj(pod))
-					continue
-				}
 				klog.V(4).InfoS("Failed to initialize the pod, as the init container failed to start, aborting", "initContainerName", container.Name, "pod", klog.KObj(pod))
 				return
 			}
